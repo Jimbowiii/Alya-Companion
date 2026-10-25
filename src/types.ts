@@ -4,6 +4,8 @@ export type Settings = {
   vanity_url: string;
   accent_color: string;
   hidden_tabs: string[];
+  tab_order: string[];
+  dashboard_modules: string[];
 };
 
 export type ThemeStatus = {

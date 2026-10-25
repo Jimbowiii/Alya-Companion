@@ -30,6 +30,7 @@
     "targets": [
       "nsis"
     ],
+    "createUpdaterArtifacts": true,
     "category": "Utility",
     "shortDescription": "Alya Companion for AlyArchetype, Surf patches and vanity previews",
     "longDescription": "Manage AlyArchetype, Surf ROM patches, vanity previews, roaming rotations, Shinyboard, the PokeMMO forum and Alya Companion updates without controlling the PokeMMO client.",
@@ -46,5 +47,16 @@
     "externalBin": [
       "binaries/xdelta3"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEMzNENDRkZGQzhCMEU0ODAKUldTQTVMREkvODlNdytIQjVQRnNVeFJEbXE2R3ZlR2g2MG0vbnM1SU03czVnRWsrSm9GMC9tUCsK",
+      "endpoints": [
+        "https://github.com/Jimbowiii/Alya-Companion/releases/download/updater-metadata/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

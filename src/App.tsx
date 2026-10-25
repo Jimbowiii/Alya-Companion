@@ -4,15 +4,19 @@ import { open } from "@tauri-apps/plugin-dialog";
 import {
   CheckCircle2,
   CircleAlert,
+  ChevronDown,
+  ChevronUp,
   CloudDownload,
   FolderOpen,
   Gauge,
+  GripVertical,
   Gem,
   Image as ImageIcon,
   MessagesSquare,
   RefreshCw,
   RotateCcw,
   Save,
+  Pencil,
   Settings as SettingsIcon,
   ShipWheel,
   Sparkles,
@@ -22,6 +26,10 @@ import {
   XCircle,
 } from "lucide-react";
 import { api } from "./bridge";
+import {
+  checkCompanionUpdate,
+  installCompanionUpdate,
+} from "./updater";
 import type { EmbeddedWebviewKind } from "./bridge";
 import type { AppState, CompanionUpdateStatus, Settings, SurfPatch, ThemeStatus } from "./types";
 import alyaIcon from "./assets/alya-icon.png";
@@ -35,6 +43,8 @@ const EMPTY_SETTINGS: Settings = {
   vanity_url: "https://www.crimsoncoremmo.co.uk/vanity-booth",
   accent_color: "#9b7bdf",
   hidden_tabs: [],
+  tab_order: ["dashboard", "theme", "surf", "vanity", "shinyboard", "rotations", "forum", "settings"],
+  dashboard_modules: ["theme", "surf", "rotations"],
 };
 
 const NAV_ITEMS = [
@@ -46,6 +56,15 @@ const NAV_ITEMS = [
   ["rotations", "Rotations", TimerReset],
   ["forum", "Forum", MessagesSquare],
   ["settings", "Settings", SettingsIcon],
+] as const;
+
+const DASHBOARD_MODULES = [
+  ["theme", "AlyArchetype", Sparkles],
+  ["surf", "Surf", ShipWheel],
+  ["rotations", "Rotations", TimerReset],
+  ["vanity", "Vanity", ImageIcon],
+  ["shinyboard", "Shinyboard", Gem],
+  ["forum", "Forum", MessagesSquare],
 ] as const;
 
 const EXTERNAL_TABS: Partial<Record<Tab, EmbeddedWebviewKind>> = {
@@ -82,9 +101,14 @@ function App() {
   const [settings, setSettings] = useState<Settings>(EMPTY_SETTINGS);
   const [patches, setPatches] = useState<SurfPatch[]>([]);
   const [companionUpdate, setCompanionUpdate] = useState<CompanionUpdateStatus | null>(null);
+  const [updateProgress, setUpdateProgress] = useState<number | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [customizeOpen, setCustomizeOpen] = useState(false);
+  const [dashboardEditorOpen, setDashboardEditorOpen] = useState(false);
+  const [draggedTab, setDraggedTab] = useState<Tab | null>(null);
+  const draggedTabRef = useRef<Tab | null>(null);
+  const dragOrderRef = useRef<Tab[] | null>(null);
   const embeddedHostRef = useRef<HTMLDivElement | null>(null);
 
   const notify = (kind: "ok" | "error", text: string) => setMessage({ kind, text });
@@ -122,7 +146,9 @@ function App() {
 
   useEffect(() => {
     void load();
-    void api.checkCompanionUpdate().then(setCompanionUpdate).catch(() => undefined);
+    void checkCompanionUpdate()
+      .then(setCompanionUpdate)
+      .catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -212,9 +238,28 @@ function App() {
   };
 
   const refreshCompanionUpdate = async () => {
-    const update = await api.checkCompanionUpdate();
+    const update = await checkCompanionUpdate();
     setCompanionUpdate(update);
     return update;
+  };
+
+  const performCompanionUpdate = async () => {
+    setBusy("companion-update");
+    setMessage(null);
+    setUpdateProgress(0);
+
+    try {
+      await installCompanionUpdate((percent) => {
+        setUpdateProgress(percent);
+      });
+
+      // Sur Windows, si l'installation est lancée correctement,
+      // Tauri va quitter Alya Companion automatiquement.
+    } catch (error) {
+      notify("error", String(error));
+      setBusy(null);
+      setUpdateProgress(null);
+    }
   };
 
   const applyAccentColor = async (color: string) => {
@@ -241,10 +286,115 @@ function App() {
     }
   };
 
+  const normalizedTabOrder = (order: string[] | undefined): Tab[] => {
+    const known = NAV_ITEMS.map(([id]) => id) as Tab[];
+    const seen = new Set<Tab>();
+    const result: Tab[] = [];
+    for (const raw of order ?? []) {
+      if ((known as string[]).includes(raw) && !seen.has(raw as Tab)) {
+        seen.add(raw as Tab);
+        result.push(raw as Tab);
+      }
+    }
+    for (const id of known) if (!seen.has(id)) result.push(id);
+    return result;
+  };
+
+  const persistTabOrder = async (order: Tab[]) => {
+    const nextSettings = { ...settings, tab_order: order };
+    setSettings(nextSettings);
+    try {
+      await persistSettings(nextSettings);
+    } catch (error) {
+      notify("error", String(error));
+    }
+  };
+
+  const reorderTabs = (order: Tab[], from: Tab, to: Tab) => {
+    if (from === to) return order;
+    const fromIndex = order.indexOf(from);
+    const toIndex = order.indexOf(to);
+    if (fromIndex < 0 || toIndex < 0) return order;
+    const next = [...order];
+    const [item] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, item);
+    return next;
+  };
+
+  const moveTab = async (from: Tab, to: Tab) => {
+    const order = normalizedTabOrder(settings.tab_order);
+    const next = reorderTabs(order, from, to);
+    if (next === order) return;
+    await persistTabOrder(next);
+  };
+
+  const moveTabByOffset = async (id: Tab, offset: -1 | 1) => {
+    const order = normalizedTabOrder(settings.tab_order);
+    const index = order.indexOf(id);
+    const targetIndex = index + offset;
+    if (index < 0 || targetIndex < 0 || targetIndex >= order.length) return;
+    await moveTab(id, order[targetIndex]);
+  };
+
+  const beginTabPointerDrag = (event: React.PointerEvent<HTMLSpanElement>, id: Tab) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    draggedTabRef.current = id;
+    dragOrderRef.current = normalizedTabOrder(settings.tab_order);
+    setDraggedTab(id);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const continueTabPointerDrag = (event: React.PointerEvent<HTMLSpanElement>) => {
+    const from = draggedTabRef.current;
+    if (!from) return;
+
+    const element = document.elementFromPoint(event.clientX, event.clientY);
+    const row = element?.closest<HTMLElement>("[data-tab-id]");
+    const to = row?.dataset.tabId as Tab | undefined;
+    if (!to || to === from) return;
+
+    const order = dragOrderRef.current ?? normalizedTabOrder(settings.tab_order);
+    const next = reorderTabs(order, from, to);
+    if (next === order) return;
+
+    dragOrderRef.current = next;
+    setSettings((current) => ({ ...current, tab_order: next }));
+  };
+
+  const endTabPointerDrag = (event: React.PointerEvent<HTMLSpanElement>) => {
+    if (!draggedTabRef.current) return;
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    const finalOrder = dragOrderRef.current;
+    draggedTabRef.current = null;
+    dragOrderRef.current = null;
+    setDraggedTab(null);
+
+    if (finalOrder) void persistTabOrder(finalOrder);
+  };
+
+  const toggleDashboardModule = async (id: string) => {
+    const visible = new Set(settings.dashboard_modules ?? []);
+    if (visible.has(id)) visible.delete(id); else visible.add(id);
+    const nextSettings = { ...settings, dashboard_modules: Array.from(visible) };
+    setSettings(nextSettings);
+    try {
+      await persistSettings(nextSettings);
+    } catch (error) {
+      notify("error", String(error));
+    }
+  };
+
   const theme = state?.theme_status;
   const activePatch = state?.surf_state.active_patch_name ?? "ROM d'origine / inconnu";
   const hiddenTabs = settings.hidden_tabs ?? [];
-  const nav = useMemo(() => NAV_ITEMS.filter(([id]) => id === "dashboard" || !hiddenTabs.includes(id)), [hiddenTabs]);
+  const tabOrder = useMemo(() => normalizedTabOrder(settings.tab_order), [settings.tab_order]);
+  const nav = useMemo(() => tabOrder.map((id) => NAV_ITEMS.find(([itemId]) => itemId === id)!).filter(([id]) => id === "dashboard" || !hiddenTabs.includes(id)), [tabOrder, hiddenTabs]);
+  const dashboardModules = settings.dashboard_modules ?? ["theme", "surf", "rotations"];
   const appStyle = { "--accent": settings.accent_color || "#9b7bdf" } as CSSProperties;
 
   return (
@@ -286,13 +436,38 @@ function App() {
           <section>
             <header className="page-header">
               <div><p className="eyebrow">Overview</p><h1>Dashboard</h1></div>
-              <button className="ghost" disabled={Boolean(busy)} onClick={() => void load()}><RefreshCw size={17} /> Actualiser</button>
+              <div className="dashboard-header-actions">
+                <button className={`icon-button dashboard-edit-button ${dashboardEditorOpen ? "active" : ""}`} onClick={() => setDashboardEditorOpen((value) => !value)} title="Choisir les modules du Dashboard" aria-label="Choisir les modules du Dashboard"><Pencil size={16} /></button>
+                <button className="ghost" disabled={Boolean(busy)} onClick={() => void load()}><RefreshCw size={17} /> Actualiser</button>
+              </div>
             </header>
+            {dashboardEditorOpen && (
+              <div className="dashboard-editor-panel">
+                <div className="dashboard-editor-head"><div><span className="eyebrow">Dashboard</span><strong>Modules affichés</strong></div><button className="icon-button" onClick={() => setDashboardEditorOpen(false)} title="Fermer"><X size={16}/></button></div>
+                <div className="dashboard-module-list">
+                  {DASHBOARD_MODULES.map(([id, label, Icon]) => (
+                    <label className="dashboard-module-toggle" key={id}>
+                      <input type="checkbox" checked={dashboardModules.includes(id)} onChange={() => void toggleDashboardModule(id)} />
+                      <Icon size={16}/><span>{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
             {companionUpdate?.update_available && (
               <div className="update-banner">
                 <div><CloudDownload size={19}/><span><strong>Alya Companion {companionUpdate.latest_version}</strong> est disponible.</span></div>
-                <button className="primary compact" disabled={Boolean(busy) || !companionUpdate.installer_available || !companionUpdate.checksum_available} onClick={() => run("companion-update", api.installCompanionUpdate, undefined, false)}>
-                  <CloudDownload size={16}/> {busy === "companion-update" ? "Téléchargement…" : "Mettre à jour"}
+                <button
+                  className="primary compact"
+                  disabled={Boolean(busy)}
+                  onClick={() => void performCompanionUpdate()}
+                >
+                  <CloudDownload size={16}/>
+                  {busy === "companion-update"
+                    ? updateProgress !== null
+                      ? `Téléchargement ${updateProgress}%`
+                      : "Téléchargement…"
+                    : "Mettre à jour"}
                 </button>
               </div>
             )}
@@ -300,25 +475,44 @@ function App() {
               <div><span className="kicker">Alya Companion</span><h2>Un seul endroit pour tes outils PokeMMO.</h2><p>Thème AlyArchetype, Surf Manager, Vanity, rotations légendaires, Shinyboard et forum dans une seule application.</p></div>
               <div className="hero-orb"><img src={alyaIcon} alt="" /></div>
             </div>
-            <div className="grid three">
-              <article className="card">
+            <div className="grid three dashboard-modules-grid">
+              {dashboardModules.includes("theme") && <article className="card">
                 <div className="card-title"><Sparkles size={18} /><span>AlyArchetype</span></div>
                 <strong className="big-value">{theme?.local_version ?? "Non détecté"}</strong>
                 <p>{theme?.latest_version ? `Dernière release : ${theme.latest_version}` : "Source : Jimbowiii/AlyArchetype · AlyArchetype.zip"}</p>
                 {theme && <StatusPill ok={!theme.update_available}>{theme.update_available ? "Mise à jour disponible" : "À jour"}</StatusPill>}
-              </article>
-              <article className="card">
+              </article>}
+              {dashboardModules.includes("surf") && <article className="card">
                 <div className="card-title"><ShipWheel size={18} /><span>Surf</span></div>
                 <strong className="big-value">{activePatch}</strong>
                 <p>{settings.rom_path || "Aucune ROM configurée."}</p>
                 <button className="text-button" onClick={() => setTab("surf")}>Gérer les patches →</button>
-              </article>
-              <article className="card">
+              </article>}
+              {dashboardModules.includes("rotations") && <article className="card">
                 <div className="card-title"><TimerReset size={18} /><span>Rotations</span></div>
                 <strong className="big-value">{currentRotationLabel()}</strong>
                 <p>Les roamers de Kanto et Johto changent au 1er du mois à 00:00 UTC.</p>
                 <button className="text-button" onClick={() => setTab("rotations")}>Voir le calendrier →</button>
-              </article>
+              </article>}
+              {dashboardModules.includes("vanity") && <article className="card">
+                <div className="card-title"><ImageIcon size={18} /><span>Vanity</span></div>
+                <strong className="big-value">Preview</strong>
+                <p>Prévisualise les cosmétiques directement dans Alya Companion.</p>
+                <button className="text-button" onClick={() => setTab("vanity")}>Ouvrir Vanity →</button>
+              </article>}
+              {dashboardModules.includes("shinyboard") && <article className="card">
+                <div className="card-title"><Gem size={18} /><span>Shinyboard</span></div>
+                <strong className="big-value">Dashboard</strong>
+                <p>Accède à ton suivi Shinyboard directement depuis l'application.</p>
+                <button className="text-button" onClick={() => setTab("shinyboard")}>Ouvrir Shinyboard →</button>
+              </article>}
+              {dashboardModules.includes("forum") && <article className="card">
+                <div className="card-title"><MessagesSquare size={18} /><span>Forum</span></div>
+                <strong className="big-value">PokeMMO</strong>
+                <p>Consulte le forum officiel sans quitter Alya Companion.</p>
+                <button className="text-button" onClick={() => setTab("forum")}>Ouvrir le forum →</button>
+              </article>}
+              {dashboardModules.length === 0 && <div className="dashboard-empty-modules"><Pencil size={20}/><span>Aucun module sélectionné. Utilise le crayon pour personnaliser le Dashboard.</span></div>}
             </div>
           </section>
         )}
@@ -387,11 +581,22 @@ function App() {
                 <div><span>Version installée</span><strong>{companionUpdate?.current_version ?? "1.0.0-rc.4"}{companionUpdate?.development_build ? " (DEV)" : ""}</strong></div>
                 <div><span>Dernière release</span><strong>{companionUpdate?.latest_version ?? "Non vérifiée"}</strong></div>
                 <div><span>Dépôt de mise à jour</span><strong>{companionUpdate?.repository ?? "Jimbowiii/Alya-Companion"}</strong></div>
-                <div><span>Intégrité</span><strong>{companionUpdate?.checksum_available ? "SHA-256 disponible" : "En attente de release"}</strong></div>
+                <div><span>Sécurité update</span><strong>{companionUpdate?.update_available ? "Signature Tauri requise" : "Vérification cryptographique"}</strong></div>
               </div>
               {companionUpdate?.changelog && <pre className="companion-changelog">{companionUpdate.changelog}</pre>}
               {companionUpdate?.update_available ? (
-                <button className="primary" disabled={Boolean(busy) || !companionUpdate.installer_available || !companionUpdate.checksum_available} onClick={() => run("companion-update", api.installCompanionUpdate, undefined, false)}><CloudDownload size={17}/> {busy === "companion-update" ? "Téléchargement…" : `Installer ${companionUpdate.latest_version}`}</button>
+                <button
+                  className="primary"
+                  disabled={Boolean(busy)}
+                  onClick={() => void performCompanionUpdate()}
+                >
+                  <CloudDownload size={17}/>
+                  {busy === "companion-update"
+                    ? updateProgress !== null
+                      ? `Téléchargement ${updateProgress}%`
+                      : "Téléchargement…"
+                    : `Installer ${companionUpdate.latest_version}`}
+                </button>
               ) : companionUpdate?.latest_version ? <StatusPill ok={true}>Alya Companion est à jour</StatusPill> : null}
             </div>
             <div className="settings-card"><h2>Vanity</h2><TextField label="URL du booth" value={settings.vanity_url} onChange={(v) => setSettings((s) => ({ ...s, vanity_url: v }))} /></div>
@@ -405,13 +610,59 @@ function App() {
           <div className="customizer-head"><div><span className="eyebrow">Interface</span><h2>Personnaliser</h2></div><button className="icon-button" onClick={() => setCustomizeOpen(false)} title="Fermer"><X size={17}/></button></div>
           <div className="customizer-section">
             <h3>Onglets du volet</h3>
-            <label className="tab-toggle locked"><input type="checkbox" checked readOnly /><span>Dashboard</span><small>Toujours affiché</small></label>
-            {NAV_ITEMS.filter(([id]) => id !== "dashboard").map(([id, label]) => (
-              <label className="tab-toggle" key={id}>
-                <input type="checkbox" checked={!hiddenTabs.includes(id)} onChange={() => void toggleTabVisibility(id)} />
-                <span>{label}</span>
-              </label>
-            ))}
+            <div className="tab-order-list">
+              {tabOrder.map((id) => {
+                const item = NAV_ITEMS.find(([itemId]) => itemId === id);
+                if (!item) return null;
+                const [, label, Icon] = item;
+                const locked = id === "dashboard";
+                return (
+                  <div
+                    className={`tab-order-row ${draggedTab === id ? "dragging" : ""}`}
+                    key={id}
+                    data-tab-id={id}
+                  >
+                    <span
+                      className="drag-handle"
+                      role="button"
+                      tabIndex={0}
+                      title={`Maintiens et déplace ${label}`}
+                      aria-label={`Déplacer ${label}`}
+                      onPointerDown={(event) => beginTabPointerDrag(event, id)}
+                      onPointerMove={continueTabPointerDrag}
+                      onPointerUp={endTabPointerDrag}
+                      onPointerCancel={endTabPointerDrag}
+                    >
+                      <GripVertical size={16} aria-hidden="true" />
+                    </span>
+                    <Icon size={15} />
+                    <span className="tab-order-label">{label}</span>
+                    <div className="tab-order-actions" aria-label={`Position de ${label}`}>
+                      <button
+                        type="button"
+                        disabled={tabOrder.indexOf(id) === 0}
+                        onClick={() => void moveTabByOffset(id, -1)}
+                        title={`Monter ${label}`}
+                        aria-label={`Monter ${label}`}
+                      >
+                        <ChevronUp size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={tabOrder.indexOf(id) === tabOrder.length - 1}
+                        onClick={() => void moveTabByOffset(id, 1)}
+                        title={`Descendre ${label}`}
+                        aria-label={`Descendre ${label}`}
+                      >
+                        <ChevronDown size={14} />
+                      </button>
+                    </div>
+                    {locked ? <small>Toujours affiché</small> : <input type="checkbox" checked={!hiddenTabs.includes(id)} onChange={() => void toggleTabVisibility(id)} aria-label={`Afficher ${label}`} />}
+                  </div>
+                );
+              })}
+            </div>
+            <p className="customizer-hint">Maintiens la poignée ⋮⋮ et déplace la souris. Les flèches permettent aussi de monter ou descendre un onglet.</p>
           </div>
           <div className="customizer-section">
             <h3>Couleur d'accentuation</h3>
