@@ -1,0 +1,49 @@
+name: Test Discord webhook
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-discord:
+    runs-on: windows-latest
+
+    steps:
+      - name: Send test message to Discord
+        shell: pwsh
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:DISCORD_WEBHOOK_URL)) {
+            throw "Le secret DISCORD_WEBHOOK_URL est vide ou introuvable."
+          }
+
+          $payload = @{
+            username = "Alya Companion"
+            embeds = @(
+              @{
+                title = "Test Alya Companion"
+                description = "Le webhook Discord fonctionne correctement."
+                color = 7506394
+                fields = @(
+                  @{
+                    name = "Statut"
+                    value = "Connexion GitHub Actions -> Discord OK"
+                    inline = $false
+                  }
+                )
+                footer = @{
+                  text = "Alya Companion"
+                }
+              }
+            )
+          }
+
+          $json = $payload | ConvertTo-Json -Depth 10
+
+          Invoke-RestMethod `
+            -Uri $env:DISCORD_WEBHOOK_URL `
+            -Method Post `
+            -ContentType "application/json" `
+            -Body $json
+
+          Write-Host "Message de test Discord envoye."
