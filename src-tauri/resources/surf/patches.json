@@ -1,0 +1,24 @@
+{
+  "patches": [
+    {
+      "id": "togekiss-shiny",
+      "name": "Togekiss Shiny",
+      "description": "Remplace le sprite de Surf par Togekiss Shiny.",
+      "compatibility": "Pokémon Blanche FR",
+      "patch_file": "togekiss-shiny.xdelta",
+      "patch_sha256": "1fd314e18ac1172d43fdfc55d1692d216fbb2a04fd5f421d587f385e4b096b45",
+      "expected_source_sha256": null,
+      "expected_output_sha256": null
+    },
+    {
+      "id": "primal-kyogre-shiny",
+      "name": "Primal Kyogre Shiny",
+      "description": "Remplace le sprite de Surf par Primal Kyogre Shiny.",
+      "compatibility": "Pokémon Blanche FR",
+      "patch_file": "primal-kyogre-shiny.xdelta",
+      "patch_sha256": "4b7e11092f0fb40a59362e4f4b9c24fca7faf2c2b1ae41e376b6376ebf406ba3",
+      "expected_source_sha256": null,
+      "expected_output_sha256": null
+    }
+  ]
+}

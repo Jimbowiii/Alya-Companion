@@ -1,0 +1,27 @@
+[package]
+name = "alya-companion"
+version = "1.0.0-rc.1"
+description = "A lightweight companion for AlyArchetype, Surf patches and vanity previews."
+authors = ["Alya Companion"]
+edition = "2021"
+
+[lib]
+name = "alya_companion_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.7.2", features = [] }
+
+[dependencies]
+tauri = { version = "2.12.3", features = ["unstable"] }
+tauri-plugin-dialog = "2.4.0"
+tauri-plugin-shell = "2.5.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+sha2 = "0.10"
+zip = "2.4"
+tempfile = "3"
+sysinfo = "0.37"
+url = "2"
+semver = "1"
