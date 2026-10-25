@@ -28,8 +28,7 @@
   "bundle": {
     "active": true,
     "targets": [
-      "nsis",
-      "msi"
+      "nsis"
     ],
     "category": "Utility",
     "shortDescription": "Alya Companion for AlyArchetype, Surf patches and vanity previews",
