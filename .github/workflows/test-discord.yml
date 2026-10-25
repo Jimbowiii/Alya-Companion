@@ -19,7 +19,7 @@ jobs:
 
           $payload = @{
             username = "Alya Companion"
-	    thread_name = "Test Alya Companion"
+            thread_name = "Test Alya Companion"
             embeds = @(
               @{
                 title = "Test Alya Companion"
