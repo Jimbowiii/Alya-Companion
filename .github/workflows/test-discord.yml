@@ -8,33 +8,37 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Send test message to Discord forum
+      - name: Send test message to Discord forum thread
         shell: pwsh
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_THREAD_ID: ${{ secrets.DISCORD_THREAD_ID }}
         run: |
           if ([string]::IsNullOrWhiteSpace($env:DISCORD_WEBHOOK_URL)) {
-            throw "Le secret DISCORD_WEBHOOK_URL est vide ou introuvable."
+            throw "DISCORD_WEBHOOK_URL est vide ou introuvable."
           }
+
+          if ([string]::IsNullOrWhiteSpace($env:DISCORD_THREAD_ID)) {
+            throw "DISCORD_THREAD_ID est vide ou introuvable."
+          }
+
+          $separator = if ($env:DISCORD_WEBHOOK_URL.Contains("?")) { "&" } else { "?" }
+          $webhookUrl = "$env:DISCORD_WEBHOOK_URL${separator}thread_id=$env:DISCORD_THREAD_ID"
 
           $payload = @{
             username = "Alya Companion"
-            thread_name = "Test Alya Companion"
-
             embeds = @(
               @{
                 title = "Test Alya Companion"
-                description = "Le webhook Discord Forum fonctionne correctement."
+                description = "Le webhook envoie correctement les messages dans le post Forum existant."
                 color = 7506394
-
                 fields = @(
                   @{
                     name = "Statut"
-                    value = "Connexion GitHub Actions -> Discord Forum OK"
+                    value = "GitHub Actions -> Discord Forum OK"
                     inline = $false
                   }
                 )
-
                 footer = @{
                   text = "Alya Companion"
                 }
@@ -45,9 +49,9 @@ jobs:
           $json = $payload | ConvertTo-Json -Depth 10
 
           Invoke-RestMethod `
-            -Uri $env:DISCORD_WEBHOOK_URL `
+            -Uri $webhookUrl `
             -Method Post `
             -ContentType "application/json" `
             -Body $json
 
-          Write-Host "Post de test Discord Forum envoye."
+          Write-Host "Message envoye dans le thread Discord existant."
