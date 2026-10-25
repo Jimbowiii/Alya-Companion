@@ -27,6 +27,45 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm ci
+      - name: Read changelog
+        id: changelog
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          if (-not (Test-Path "CHANGELOG.md")) {
+            throw "CHANGELOG.md is missing."
+          }
+
+          $version = $env:RELEASE_TAG -replace '^v', ''
+          $content = Get-Content "CHANGELOG.md" -Raw
+
+          $escapedVersion = [regex]::Escape($version)
+
+          $pattern = "(?ms)^##\s+\[$escapedVersion\].*?\r?\n(?<body>.*?)(?=^##\s+\[|\z)"
+
+          $match = [regex]::Match($content, $pattern)
+
+          if (-not $match.Success) {
+            throw "No changelog section found for version $version."
+          }
+
+          $body = $match.Groups["body"].Value.Trim()
+
+          if ([string]::IsNullOrWhiteSpace($body)) {
+            throw "The changelog for version $version is empty."
+          }
+
+          Write-Host "Changelog found for $version"
+          Write-Host $body
+
+          $delimiter = "CHANGELOG_$([guid]::NewGuid().ToString('N'))"
+
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "body<<$delimiter" -Encoding utf8
+          Add-Content -Path $env:GITHUB_OUTPUT -Value $body -Encoding utf8
+          Add-Content -Path $env:GITHUB_OUTPUT -Value $delimiter -Encoding utf8
 
       - name: Build and publish Alya Companion
         uses: tauri-apps/tauri-action@v1
@@ -37,10 +76,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Alya Companion ${{ github.ref_name }}"
-          releaseBody: |
-            Nouvelle version d'Alya Companion.
-
-            Consultez le changelog pour connaître les nouveautés et corrections.
+          releaseBody: ${{ steps.changelog.outputs.body }}
           prerelease: ${{ contains(github.ref_name, '-') }}
           uploadUpdaterJson: true
           uploadUpdaterSignatures: true
@@ -95,6 +131,7 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
           REPOSITORY: ${{ github.repository }}
           SERVER_URL: ${{ github.server_url }}
+          CHANGELOG_BODY: ${{ steps.changelog.outputs.body }}
         run: |
           $ErrorActionPreference = "Stop"
 
@@ -118,24 +155,48 @@ jobs:
 
           $downloadUrl = "$env:SERVER_URL/$env:REPOSITORY/releases/download/$env:RELEASE_TAG/Alya-Companion-Windows-x64-setup.exe"
 
+          $changelog = $env:CHANGELOG_BODY
+
+          if ([string]::IsNullOrWhiteSpace($changelog)) {
+            $changelog = "Aucun détail fourni pour cette version."
+          }
+
+          $maxChangelogLength = 1600
+
+          if ($changelog.Length -gt $maxChangelogLength) {
+            $changelog = $changelog.Substring(0, $maxChangelogLength)
+            $changelog += "`n`n… **Changelog tronqué sur Discord.** Consulte la GitHub Release pour lire la suite."
+          }
+
+          $description = @"
+          **$env:RELEASE_TAG** est maintenant disponible ! 🌺
+
+          ### 📋 Changelog
+
+          $changelog
+          "@
+
           $payload = @{
             username = "Alya Companion"
             embeds = @(
               @{
-                title = "Nouvelle version d'Alya Companion disponible !"
-                description = "La version **$env:RELEASE_TAG** d'Alya Companion est maintenant disponible."
+                title = "🌺 Nouvelle version d'Alya Companion disponible !"
+                description = $description
                 fields = @(
                   @{
-                    name = "Téléchargement direct"
+                    name = "📥 Téléchargement"
                     value = "[Télécharger Alya Companion]($downloadUrl)"
-                    inline = $false
+                    inline = $true
                   },
                   @{
-                    name = "GitHub Release"
-                    value = "[Voir la release]($releaseUrl)"
-                    inline = $false
+                    name = "🔗 GitHub Release"
+                    value = "[Voir la release complète]($releaseUrl)"
+                    inline = $true
                   }
                 )
+                footer = @{
+                  text = "Alya Companion • PokeMMO Companion"
+                }
               }
             )
           }

@@ -356,6 +356,28 @@ nav .nav-active { box-shadow: inset 3px 0 var(--accent); }
 
 /* Monthly roaming legendary rotation */
 .rotations-page { padding-bottom: 22px; }
+.rotations-header { align-items:flex-start; }
+.shiny-toggle {
+  width:38px;
+  height:38px;
+  flex:0 0 auto;
+  display:grid;
+  place-items:center;
+  border:1px solid #343743;
+  border-radius:12px;
+  background:rgba(17,18,24,.82);
+  color:#8f93a0;
+  cursor:pointer;
+  transition:transform .16s ease, border-color .16s ease, color .16s ease, background .16s ease, box-shadow .16s ease;
+}
+.shiny-toggle:hover { transform:translateY(-1px); border-color:var(--accent-border); color:#d8c8ff; background:var(--accent-soft); }
+.shiny-toggle.active {
+  color:#fff3a6;
+  border-color:color-mix(in srgb, #ffe66d 58%, var(--accent) 42%);
+  background:linear-gradient(135deg, rgba(255,230,109,.17), var(--accent-soft));
+  box-shadow:0 0 0 1px rgba(255,230,109,.08), 0 0 24px rgba(255,230,109,.12);
+}
+.shiny-toggle.active svg { filter:drop-shadow(0 0 5px rgba(255,230,109,.55)); }
 .rotation-title-row { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:14px; }
 .rotation-title-row span { display:block; color:#878b98; font-size:12px; }
 .rotation-title-row strong { display:block; font-size:21px; margin-top:4px; }
@@ -363,6 +385,7 @@ nav .nav-active { box-shadow: inset 3px 0 var(--accent); }
 .legend-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
 .legend-card { min-height:205px; border:1px solid #292b35; border-radius:18px; background:#14151b; display:flex; align-items:center; gap:22px; padding:24px; overflow:hidden; }
 .legend-card.active { border-color:var(--accent-border); background:linear-gradient(135deg,var(--accent-soft),#14151b 62%); }
+.legend-card.shiny .legend-sprite-wrap { box-shadow:inset 0 0 0 1px rgba(255,230,109,.08), 0 0 24px rgba(255,230,109,.05); }
 .legend-sprite-wrap { width:145px; height:135px; flex:0 0 auto; display:grid; place-items:center; border-radius:16px; background:radial-gradient(circle,var(--accent-soft),rgba(13,14,19,.25) 68%); }
 .legend-sprite { width:120px; height:120px; object-fit:contain; image-rendering:pixelated; filter:drop-shadow(0 12px 14px rgba(0,0,0,.32)); }
 .legend-card h2 { margin:9px 0 0; font-size:27px; }
@@ -561,4 +584,34 @@ nav .nav-active { box-shadow: inset 3px 0 var(--accent); }
 @media (max-width: 980px) {
   .dashboard-editor-panel { right: 28px; top: 76px; }
   .dashboard-content .hero-card { min-height: 145px; padding: 20px 24px; }
+}
+
+
+/* Surf Manager previews */
+.patch-art {
+  overflow: hidden;
+  position: relative;
+}
+.patch-preview {
+  display: block;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  object-fit: contain;
+  object-position: center center;
+  padding: 0;
+  filter: drop-shadow(0 10px 12px rgba(0,0,0,.32));
+}
+.patch-art-photo .patch-preview {
+  object-fit: cover;
+  object-position: center 58%;
+  padding: 0;
+  filter: none;
+}
+.patch-art-photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 0 22px rgba(0,0,0,.28);
 }

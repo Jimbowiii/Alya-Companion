@@ -29,6 +29,46 @@
       "patch_sha256": "4b7e11092f0fb40a59362e4f4b9c24fca7faf2c2b1ae41e376b6376ebf406ba3",
       "expected_source_sha256": null,
       "expected_output_sha256": null
+    },
+    {
+      "id": "mantine-x3",
+      "name": "Demanta",
+      "description": "Remplace le sprite de Surf par Demanta.",
+      "compatibility": "Pokémon Blanche FR · V28 → V30",
+      "patch_file": "mantine-x3.xdelta",
+      "patch_sha256": "0ef69d6420f75c8e0e05fedd515c5498e1847e4d469845a9eb29fac0bb843722",
+      "expected_source_sha256": null,
+      "expected_output_sha256": null
+    },
+    {
+      "id": "lugia-shiny",
+      "name": "Lugia Shiny",
+      "description": "Remplace le sprite de Surf par Lugia Shiny.",
+      "compatibility": "Pokémon Blanche FR · V28 → V44",
+      "patch_file": "lugia-shiny.xdelta",
+      "patch_sha256": "73132f9b3cab49e2b649bb86f20f2327d605504a311ad828908aae3a6261fe4e",
+      "expected_source_sha256": null,
+      "expected_output_sha256": null
+    },
+    {
+      "id": "lugia-normal",
+      "name": "Lugia",
+      "description": "Remplace le sprite de Surf par Lugia.",
+      "compatibility": "Pokémon Blanche FR · V28 → V45",
+      "patch_file": "lugia-normal.xdelta",
+      "patch_sha256": "ca5692b2f78fab048851c56abb861527388bfe4c20e8a115a111e1bfdf595396",
+      "expected_source_sha256": null,
+      "expected_output_sha256": null
+    },
+    {
+      "id": "latias-shiny",
+      "name": "Latias Shiny",
+      "description": "Remplace le sprite de Surf par Latias Shiny.",
+      "compatibility": "Pokémon Blanche FR · V28 → V53",
+      "patch_file": "latias-shiny.xdelta",
+      "patch_sha256": "8a1a9a230b29e80a27545b7470e2590420b743f0f1b9809daff4721d9c7d86f6",
+      "expected_source_sha256": null,
+      "expected_output_sha256": null
     }
   ]
 }

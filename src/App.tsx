@@ -34,6 +34,13 @@ import type { EmbeddedWebviewKind } from "./bridge";
 import type { AppState, CompanionUpdateStatus, Settings, SurfPatch, ThemeStatus } from "./types";
 import alyaIcon from "./assets/alya-icon.png";
 import dashboardBackground from "./assets/dashboard-background.webm";
+import surfTogekissShiny from "./assets/surf-previews/togekiss-shiny.png";
+import surfKyogreShiny from "./assets/surf-previews/kyogre-shiny.png";
+import surfPrimalKyogreShiny from "./assets/surf-previews/primal-kyogre-shiny.png";
+import surfDemanta from "./assets/surf-previews/demanta.png";
+import surfLugiaShiny from "./assets/surf-previews/lugia-shiny.png";
+import surfLugiaNormal from "./assets/surf-previews/lugia-normal.png";
+import surfLatiasShiny from "./assets/surf-previews/latias-shiny.png";
 
 type Tab = "dashboard" | "theme" | "surf" | "vanity" | "shinyboard" | "rotations" | "forum" | "settings";
 
@@ -89,7 +96,17 @@ const ROTATION_CYCLE = [
 ] as const;
 
 const SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated";
-const spriteUrl = (id: number) => `${SPRITE_BASE}/${id}.gif`;
+const spriteUrl = (id: number, shiny = false) => `${SPRITE_BASE}/${shiny ? "shiny/" : ""}${id}.gif`;
+
+const SURF_PREVIEWS: Record<string, { src: string; photo?: boolean }> = {
+  "togekiss-shiny": { src: surfTogekissShiny },
+  "kyogre-shiny": { src: surfKyogreShiny },
+  "primal-kyogre-shiny": { src: surfPrimalKyogreShiny },
+  "mantine-x3": { src: surfDemanta, photo: true },
+  "lugia-shiny": { src: surfLugiaShiny },
+  "lugia-normal": { src: surfLugiaNormal },
+  "latias-shiny": { src: surfLatiasShiny },
+};
 
 function StatusPill({ ok, children }: { ok: boolean; children: React.ReactNode }) {
   return <span className={`pill ${ok ? "pill-ok" : "pill-warn"}`}>{children}</span>;
@@ -530,7 +547,13 @@ function App() {
             <div className="patch-grid">
               {patches.length === 0 ? <div className="empty-state"><ShipWheel size={32} /><h3>Patches intégrés introuvables</h3><p>Réinstalle Alya Companion : le catalogue Surf fait désormais partie de l'application.</p></div> : patches.map((patch) => (
                 <article className={`patch-card ${state?.surf_state.active_patch_id === patch.id ? "selected" : ""}`} key={patch.id}>
-                  <div className="patch-art"><ShipWheel size={36} /></div>
+                  <div className={`patch-art ${SURF_PREVIEWS[patch.id]?.photo ? "patch-art-photo" : ""}`}>
+                    {SURF_PREVIEWS[patch.id] ? (
+                      <img className="patch-preview" src={SURF_PREVIEWS[patch.id].src} alt={`Preview ${patch.name}`} />
+                    ) : (
+                      <ShipWheel size={36} />
+                    )}
+                  </div>
                   <div className="patch-meta"><span>INTÉGRÉ</span>{patch.compatibility && <span>{patch.compatibility}</span>}</div>
                   <h3>{patch.name}</h3><p>{patch.description}</p>
                   <button className="primary" disabled={Boolean(busy) || Boolean(state?.pokemmo_running) || !settings.rom_path} onClick={() => run(`patch-${patch.id}`, async () => {
@@ -695,6 +718,7 @@ function ExternalWebviewPage({ hostRef, eyebrow, title, description, source, onR
 
 function RotationsPage() {
   const [now, setNow] = useState(Date.now());
+  const [shinyMode, setShinyMode] = useState(false);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
@@ -713,11 +737,23 @@ function RotationsPage() {
   const localReset = resetDate.toLocaleString("fr-FR", { dateStyle: "full", timeStyle: "short" });
 
   return <section className="rotations-page">
-    <header className="page-header"><div><p className="eyebrow">Roaming Legendaries</p><h1>Rotations</h1><p>Cycle mensuel fixe des oiseaux de Kanto et des fauves de Johto.</p></div></header>
+    <header className="page-header rotations-header">
+      <div><p className="eyebrow">Roaming Legendaries</p><h1>Rotations</h1><p>Cycle mensuel fixe des oiseaux de Kanto et des fauves de Johto.</p></div>
+      <button
+        type="button"
+        className={`shiny-toggle ${shinyMode ? "active" : ""}`}
+        onClick={() => setShinyMode((value) => !value)}
+        aria-pressed={shinyMode}
+        aria-label={shinyMode ? "Afficher les sprites normaux" : "Afficher les sprites shiny"}
+        title={shinyMode ? "Revenir aux sprites normaux" : "Afficher les sprites shiny"}
+      >
+        <Sparkles size={18} />
+      </button>
+    </header>
     <div className="rotation-title-row"><div><span>Rotation actuelle</span><strong>{capitalize(monthLabel)}</strong></div><span className="utc-badge">Reset 00:00 UTC</span></div>
     <div className="legend-grid">
-      <LegendCard legendary={current.bird} active />
-      <LegendCard legendary={current.beast} active />
+      <LegendCard legendary={current.bird} active shiny={shinyMode} />
+      <LegendCard legendary={current.beast} active shiny={shinyMode} />
     </div>
 
     <div className="reset-timer-card">
@@ -727,27 +763,27 @@ function RotationsPage() {
 
     <div className="rotation-subtitle"><span>Prochaine rotation</span></div>
     <div className="legend-grid next">
-      <LegendCard legendary={next.bird} />
-      <LegendCard legendary={next.beast} />
+      <LegendCard legendary={next.bird} shiny={shinyMode} />
+      <LegendCard legendary={next.beast} shiny={shinyMode} />
     </div>
 
     <div className="cached-rotation">
       <span>Rotation suivante en cache</span>
-      <div><MiniLegend legendary={after.bird} /><span>+</span><MiniLegend legendary={after.beast} /></div>
+      <div><MiniLegend legendary={after.bird} shiny={shinyMode} /><span>+</span><MiniLegend legendary={after.beast} shiny={shinyMode} /></div>
     </div>
     <p className="rotation-note">Le calendrier est calculé localement à partir du cycle fixe : Électhor/Entei → Sulfura/Suicune → Artikodin/Raikou. Aucune requête réseau n'est nécessaire pour connaître les rotations futures.</p>
   </section>;
 }
 
-function LegendCard({ legendary, active = false }: { legendary: { name: string; region: string; id: number }; active?: boolean }) {
-  return <article className={`legend-card ${active ? "active" : ""}`}>
-    <div className="legend-sprite-wrap"><img className="legend-sprite" src={spriteUrl(legendary.id)} alt={`Sprite animé de ${legendary.name}`} /></div>
+function LegendCard({ legendary, active = false, shiny = false }: { legendary: { name: string; region: string; id: number }; active?: boolean; shiny?: boolean }) {
+  return <article className={`legend-card ${active ? "active" : ""} ${shiny ? "shiny" : ""}`}>
+    <div className="legend-sprite-wrap"><img className="legend-sprite" src={spriteUrl(legendary.id, shiny)} alt={`Sprite animé ${shiny ? "shiny " : ""}de ${legendary.name}`} /></div>
     <div><span className="region-badge">{legendary.region}</span><h2>{legendary.name}</h2></div>
   </article>;
 }
 
-function MiniLegend({ legendary }: { legendary: { name: string; region: string; id: number } }) {
-  return <div className="mini-legend"><img src={spriteUrl(legendary.id)} alt="" /><div><strong>{legendary.name}</strong><small>{legendary.region}</small></div></div>;
+function MiniLegend({ legendary, shiny = false }: { legendary: { name: string; region: string; id: number }; shiny?: boolean }) {
+  return <div className={`mini-legend ${shiny ? "shiny" : ""}`}><img src={spriteUrl(legendary.id, shiny)} alt={`Sprite ${shiny ? "shiny " : ""}de ${legendary.name}`} /><div><strong>{legendary.name}</strong><small>{legendary.region}</small></div></div>;
 }
 
 function currentRotationLabel() {
