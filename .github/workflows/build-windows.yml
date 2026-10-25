@@ -85,3 +85,55 @@ jobs:
           files: |
             release/Alya-Companion-Windows-x64-setup.exe
             release/Alya-Companion-Windows-x64-setup.exe.sha256
+      - name: Announce release on Discord
+        if: success()
+        shell: pwsh
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          REPOSITORY: ${{ github.repository }}
+          SERVER_URL: ${{ github.server_url }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:DISCORD_WEBHOOK_URL)) {
+            Write-Host "DISCORD_WEBHOOK_URL absent. Annonce Discord ignoree."
+            exit 0
+          }
+
+          $releaseUrl = "$env:SERVER_URL/$env:REPOSITORY/releases/tag/$env:RELEASE_TAG"
+          $downloadUrl = "$env:SERVER_URL/$env:REPOSITORY/releases/download/$env:RELEASE_TAG/Alya-Companion-Windows-x64-setup.exe"
+
+          $payload = @{
+            username = "Alya Companion"
+            embeds = @(
+              @{
+                title = "Nouvelle version d'Alya Companion disponible !"
+                description = "La version **$env:RELEASE_TAG** vient d'etre publiee."
+                color = 7506394
+                fields = @(
+                  @{
+                    name = "Telecharger"
+                    value = "[Telecharger Alya Companion]($downloadUrl)"
+                    inline = $false
+                  },
+                  @{
+                    name = "Release GitHub"
+                    value = "[Voir les details de la version]($releaseUrl)"
+                    inline = $false
+                  }
+                )
+                footer = @{
+                  text = "Alya Companion"
+                }
+              }
+            )
+          }
+
+          $json = $payload | ConvertTo-Json -Depth 10
+
+          Invoke-RestMethod `
+            -Uri $env:DISCORD_WEBHOOK_URL `
+            -Method Post `
+            -ContentType "application/json" `
+            -Body $json
+
+          Write-Host "Annonce Discord envoyee pour $env:RELEASE_TAG"
