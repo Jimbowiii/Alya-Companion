@@ -1,6 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { AppState, CompanionUpdateStatus, Settings, SurfPatch, SurfState, ThemeStatus } from "./types";
 
+export type EmbeddedWebviewKind = "vanity" | "shinyboard" | "forum";
+
 export const api = {
   getState: () => invoke<AppState>("get_state"),
   saveSettings: (settings: Settings) => invoke<AppState>("save_settings", { settings }),
@@ -10,10 +12,10 @@ export const api = {
   listSurfPatches: () => invoke<SurfPatch[]>("list_surf_patches"),
   applySurfPatch: (patchId: string) => invoke<SurfState>("apply_surf_patch", { patchId }),
   restoreOriginalRom: () => invoke<SurfState>("restore_original_rom"),
-  showVanity: (bounds: { x: number; y: number; width: number; height: number }) =>
-    invoke<void>("show_vanity_webview", bounds),
-  hideVanity: () => invoke<void>("hide_vanity_webview"),
-  reloadVanity: () => invoke<void>("reload_vanity_webview"),
+  showEmbeddedWebview: (kind: EmbeddedWebviewKind, bounds: { x: number; y: number; width: number; height: number }) =>
+    invoke<void>("show_embedded_webview", { kind, ...bounds }),
+  hideEmbeddedWebviews: () => invoke<void>("hide_embedded_webviews"),
+  reloadEmbeddedWebview: (kind: EmbeddedWebviewKind) => invoke<void>("reload_embedded_webview", { kind }),
   checkCompanionUpdate: () => invoke<CompanionUpdateStatus>("check_companion_update"),
   installCompanionUpdate: () => invoke<string>("install_companion_update"),
 };

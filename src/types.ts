@@ -2,6 +2,8 @@ export type Settings = {
   pokemmo_dir: string;
   rom_path: string;
   vanity_url: string;
+  accent_color: string;
+  hidden_tabs: string[];
 };
 
 export type ThemeStatus = {

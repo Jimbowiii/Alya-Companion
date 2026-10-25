@@ -27,6 +27,10 @@ const ALYA_COMPANION_INSTALLER_SHA256: &str = "Alya-Companion-Windows-x64-setup.
 const BUILTIN_SURF_RESOURCE_DIR: &str = "resources/surf";
 const BUILTIN_SURF_MANIFEST: &str = "patches.json";
 const VANITY_WEBVIEW_LABEL: &str = "vanity-embedded";
+const SHINYBOARD_WEBVIEW_LABEL: &str = "shinyboard-embedded";
+const FORUM_WEBVIEW_LABEL: &str = "forum-embedded";
+const SHINYBOARD_URL: &str = "https://shinyboard.net/dashboard";
+const FORUM_URL: &str = "https://forums.pokemmo.com/";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
@@ -34,6 +38,8 @@ struct Settings {
     pokemmo_dir: String,
     rom_path: String,
     vanity_url: String,
+    accent_color: String,
+    hidden_tabs: Vec<String>,
 }
 
 impl Default for Settings {
@@ -42,6 +48,8 @@ impl Default for Settings {
             pokemmo_dir: String::new(),
             rom_path: String::new(),
             vanity_url: "https://www.crimsoncoremmo.co.uk/vanity-booth".into(),
+            accent_color: "#9b7bdf".into(),
+            hidden_tabs: Vec::new(),
         }
     }
 }
@@ -220,6 +228,10 @@ fn validate_settings(settings: &Settings) -> Result<(), String> {
         if url.scheme() != "https" && url.scheme() != "http" {
             return Err("L'URL Vanity doit utiliser http ou https".into());
         }
+    }
+    let accent = settings.accent_color.trim();
+    if !accent.is_empty() && !(accent.len() == 7 && accent.starts_with('#') && accent[1..].chars().all(|c| c.is_ascii_hexdigit())) {
+        return Err("Couleur d'accentuation invalide".into());
     }
     Ok(())
 }
@@ -751,21 +763,28 @@ fn restore_original_rom(app: AppHandle) -> Result<SurfState, String> {
     Ok(state)
 }
 
-fn vanity_url(app: &AppHandle) -> Result<Url, String> {
-    let settings = load_settings(app)?;
-    let url = Url::parse(settings.vanity_url.trim()).map_err(|_| "URL Vanity invalide".to_string())?;
-    if url.scheme() != "https" && url.scheme() != "http" {
-        return Err("L'URL Vanity doit utiliser http ou https".into());
+fn embedded_webview_info(app: &AppHandle, kind: &str) -> Result<(&'static str, Url), String> {
+    match kind {
+        "vanity" => {
+            let settings = load_settings(app)?;
+            let url = Url::parse(settings.vanity_url.trim()).map_err(|_| "URL Vanity invalide".to_string())?;
+            if url.scheme() != "https" && url.scheme() != "http" {
+                return Err("L'URL Vanity doit utiliser http ou https".into());
+            }
+            Ok((VANITY_WEBVIEW_LABEL, url))
+        }
+        "shinyboard" => Ok((SHINYBOARD_WEBVIEW_LABEL, Url::parse(SHINYBOARD_URL).map_err(|e| e.to_string())?)),
+        "forum" => Ok((FORUM_WEBVIEW_LABEL, Url::parse(FORUM_URL).map_err(|e| e.to_string())?)),
+        _ => Err("WebView intégré inconnu".into()),
     }
-    Ok(url)
 }
 
-fn validate_vanity_bounds(x: f64, y: f64, width: f64, height: f64) -> Result<(LogicalPosition<f64>, LogicalSize<f64>), String> {
+fn validate_embedded_bounds(x: f64, y: f64, width: f64, height: f64) -> Result<(LogicalPosition<f64>, LogicalSize<f64>), String> {
     if !x.is_finite() || !y.is_finite() || !width.is_finite() || !height.is_finite() {
-        return Err("Dimensions Vanity invalides".into());
+        return Err("Dimensions WebView invalides".into());
     }
     if width < 160.0 || height < 160.0 {
-        return Err("Zone Vanity trop petite".into());
+        return Err("Zone WebView trop petite".into());
     }
     Ok((
         LogicalPosition::new(x.max(0.0), y.max(0.0)),
@@ -773,12 +792,29 @@ fn validate_vanity_bounds(x: f64, y: f64, width: f64, height: f64) -> Result<(Lo
     ))
 }
 
-#[tauri::command]
-async fn show_vanity_webview(app: AppHandle, x: f64, y: f64, width: f64, height: f64) -> Result<(), String> {
-    let url = vanity_url(&app)?;
-    let (position, size) = validate_vanity_bounds(x, y, width, height)?;
+fn embedded_labels() -> [&'static str; 3] {
+    [VANITY_WEBVIEW_LABEL, SHINYBOARD_WEBVIEW_LABEL, FORUM_WEBVIEW_LABEL]
+}
 
-    if let Some(webview) = app.get_webview(VANITY_WEBVIEW_LABEL) {
+fn hide_other_embedded_webviews(app: &AppHandle, keep: Option<&str>) -> Result<(), String> {
+    for label in embedded_labels() {
+        if keep == Some(label) {
+            continue;
+        }
+        if let Some(webview) = app.get_webview(label) {
+            webview.hide().map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn show_embedded_webview(app: AppHandle, kind: String, x: f64, y: f64, width: f64, height: f64) -> Result<(), String> {
+    let (label, url) = embedded_webview_info(&app, &kind)?;
+    let (position, size) = validate_embedded_bounds(x, y, width, height)?;
+    hide_other_embedded_webviews(&app, Some(label))?;
+
+    if let Some(webview) = app.get_webview(label) {
         webview.set_position(position).map_err(|e| e.to_string())?;
         webview.set_size(size).map_err(|e| e.to_string())?;
         let should_navigate = webview.url().map(|current| current != url).unwrap_or(true);
@@ -791,30 +827,28 @@ async fn show_vanity_webview(app: AppHandle, x: f64, y: f64, width: f64, height:
 
     let main_webview = app
         .get_webview("main")
-        .or_else(|| app.webviews().into_values().find(|webview| webview.label() != VANITY_WEBVIEW_LABEL))
+        .or_else(|| app.webviews().into_values().find(|webview| !embedded_labels().contains(&webview.label())))
         .ok_or_else(|| "Fenêtre principale Alya Companion introuvable".to_string())?;
     let window = main_webview.window();
 
-    let builder = WebviewBuilder::new(VANITY_WEBVIEW_LABEL, WebviewUrl::External(url));
+    let builder = WebviewBuilder::new(label, WebviewUrl::External(url));
     window
         .add_child(builder, position, size)
-        .map_err(|e| format!("Impossible d'intégrer Vanity dans Alya Companion: {e}"))?;
+        .map_err(|e| format!("Impossible d'intégrer {kind} dans Alya Companion: {e}"))?;
     Ok(())
 }
 
 #[tauri::command]
-fn hide_vanity_webview(app: AppHandle) -> Result<(), String> {
-    if let Some(webview) = app.get_webview(VANITY_WEBVIEW_LABEL) {
-        webview.hide().map_err(|e| e.to_string())?;
-    }
-    Ok(())
+fn hide_embedded_webviews(app: AppHandle) -> Result<(), String> {
+    hide_other_embedded_webviews(&app, None)
 }
 
 #[tauri::command]
-fn reload_vanity_webview(app: AppHandle) -> Result<(), String> {
+fn reload_embedded_webview(app: AppHandle, kind: String) -> Result<(), String> {
+    let (label, _) = embedded_webview_info(&app, &kind)?;
     let webview = app
-        .get_webview(VANITY_WEBVIEW_LABEL)
-        .ok_or_else(|| "Le Vanity Booth n'est pas encore ouvert".to_string())?;
+        .get_webview(label)
+        .ok_or_else(|| format!("Le module {kind} n'est pas encore ouvert"))?;
     webview.reload().map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -983,9 +1017,9 @@ pub fn run() {
             list_surf_patches,
             apply_surf_patch,
             restore_original_rom,
-            show_vanity_webview,
-            hide_vanity_webview,
-            reload_vanity_webview,
+            show_embedded_webview,
+            hide_embedded_webviews,
+            reload_embedded_webview,
             check_companion_update,
             install_companion_update,
         ])

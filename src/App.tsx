@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
   CheckCircle2,
@@ -6,27 +7,70 @@ import {
   CloudDownload,
   FolderOpen,
   Gauge,
+  Gem,
   Image as ImageIcon,
+  MessagesSquare,
   RefreshCw,
   RotateCcw,
   Save,
   Settings as SettingsIcon,
   ShipWheel,
   Sparkles,
+  TimerReset,
+  Wrench,
+  X,
   XCircle,
 } from "lucide-react";
 import { api } from "./bridge";
+import type { EmbeddedWebviewKind } from "./bridge";
 import type { AppState, CompanionUpdateStatus, Settings, SurfPatch, ThemeStatus } from "./types";
 import alyaIcon from "./assets/alya-icon.png";
 import dashboardBackground from "./assets/dashboard-background.webm";
 
-type Tab = "dashboard" | "theme" | "surf" | "vanity" | "settings";
+type Tab = "dashboard" | "theme" | "surf" | "vanity" | "shinyboard" | "rotations" | "forum" | "settings";
 
 const EMPTY_SETTINGS: Settings = {
   pokemmo_dir: "",
   rom_path: "",
   vanity_url: "https://www.crimsoncoremmo.co.uk/vanity-booth",
+  accent_color: "#9b7bdf",
+  hidden_tabs: [],
 };
+
+const NAV_ITEMS = [
+  ["dashboard", "Dashboard", Gauge],
+  ["theme", "AlyArchetype", Sparkles],
+  ["surf", "Surf Manager", ShipWheel],
+  ["vanity", "Vanity", ImageIcon],
+  ["shinyboard", "Shinyboard", Gem],
+  ["rotations", "Rotations", TimerReset],
+  ["forum", "Forum", MessagesSquare],
+  ["settings", "Settings", SettingsIcon],
+] as const;
+
+const EXTERNAL_TABS: Partial<Record<Tab, EmbeddedWebviewKind>> = {
+  vanity: "vanity",
+  shinyboard: "shinyboard",
+  forum: "forum",
+};
+
+const ROTATION_CYCLE = [
+  {
+    bird: { name: "Électhor", region: "Kanto", id: 145 },
+    beast: { name: "Entei", region: "Johto", id: 244 },
+  },
+  {
+    bird: { name: "Sulfura", region: "Kanto", id: 146 },
+    beast: { name: "Suicune", region: "Johto", id: 245 },
+  },
+  {
+    bird: { name: "Artikodin", region: "Kanto", id: 144 },
+    beast: { name: "Raikou", region: "Johto", id: 243 },
+  },
+] as const;
+
+const SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated";
+const spriteUrl = (id: number) => `${SPRITE_BASE}/${id}.gif`;
 
 function StatusPill({ ok, children }: { ok: boolean; children: React.ReactNode }) {
   return <span className={`pill ${ok ? "pill-ok" : "pill-warn"}`}>{children}</span>;
@@ -40,16 +84,14 @@ function App() {
   const [companionUpdate, setCompanionUpdate] = useState<CompanionUpdateStatus | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
-  const vanityHostRef = useRef<HTMLDivElement | null>(null);
+  const [customizeOpen, setCustomizeOpen] = useState(false);
+  const embeddedHostRef = useRef<HTMLDivElement | null>(null);
 
   const notify = (kind: "ok" | "error", text: string) => setMessage({ kind, text });
 
   const load = async () => {
     try {
       const next = await api.getState();
-      // get_state() est volontairement local et ne refait pas un appel GitHub.
-      // Si une vérification de release a déjà été faite, on conserve ces
-      // métadonnées distantes lors des refresh locaux (dashboard, patch, settings…).
       setState((current) => {
         const remote = current?.theme_status;
         const local = next.theme_status;
@@ -63,12 +105,11 @@ function App() {
             changelog: remote.changelog,
             published_at: remote.published_at,
             asset_name: remote.asset_name,
-            update_available:
-              local.local_version !== remote.latest_version && remote.update_available,
+            update_available: local.local_version !== remote.latest_version && remote.update_available,
           },
         };
       });
-      setSettings(next.settings);
+      setSettings({ ...EMPTY_SETTINGS, ...next.settings });
       try {
         setPatches(await api.listSurfPatches());
       } catch {
@@ -85,28 +126,29 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (tab !== "vanity") {
-      void api.hideVanity().catch(() => undefined);
+    const kind = EXTERNAL_TABS[tab];
+    if (!kind || customizeOpen) {
+      void api.hideEmbeddedWebviews().catch(() => undefined);
       return;
     }
 
     let frame = 0;
     let disposed = false;
-    const host = vanityHostRef.current;
-    if (!host || !settings.vanity_url) return;
+    const host = embeddedHostRef.current;
+    if (!host) return;
 
     const sync = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
-        if (disposed || !vanityHostRef.current) return;
-        const rect = vanityHostRef.current.getBoundingClientRect();
+        if (disposed || !embeddedHostRef.current) return;
+        const rect = embeddedHostRef.current.getBoundingClientRect();
         if (rect.width < 160 || rect.height < 160) return;
-        void api.showVanity({
+        void api.showEmbeddedWebview(kind, {
           x: rect.left,
           y: rect.top,
           width: rect.width,
           height: rect.height,
-        }).catch((error) => notify("error", `Vanity : ${String(error)}`));
+        }).catch((error) => notify("error", `${kind} : ${String(error)}`));
       });
     };
 
@@ -122,9 +164,9 @@ function App() {
       observer.disconnect();
       window.removeEventListener("resize", sync);
       window.removeEventListener("scroll", sync, true);
-      void api.hideVanity().catch(() => undefined);
+      void api.hideEmbeddedWebviews().catch(() => undefined);
     };
-  }, [tab, settings.vanity_url]);
+  }, [tab, customizeOpen, settings.vanity_url]);
 
   const run = async (label: string, action: () => Promise<unknown>, success?: string, reloadAfter = true) => {
     setBusy(label);
@@ -142,7 +184,7 @@ function App() {
 
   const persistSettings = async (nextSettings: Settings) => {
     const next = await api.saveSettings(nextSettings);
-    setSettings(next.settings);
+    setSettings({ ...EMPTY_SETTINGS, ...next.settings });
     setState(next);
     return next;
   };
@@ -175,25 +217,42 @@ function App() {
     return update;
   };
 
+  const applyAccentColor = async (color: string) => {
+    const nextSettings = { ...settings, accent_color: color };
+    setSettings(nextSettings);
+    try {
+      await persistSettings(nextSettings);
+    } catch (error) {
+      notify("error", String(error));
+    }
+  };
+
+  const toggleTabVisibility = async (id: Tab) => {
+    if (id === "dashboard") return;
+    const hidden = new Set(settings.hidden_tabs ?? []);
+    if (hidden.has(id)) hidden.delete(id); else hidden.add(id);
+    const nextSettings = { ...settings, hidden_tabs: Array.from(hidden) };
+    setSettings(nextSettings);
+    if (hidden.has(tab)) setTab("dashboard");
+    try {
+      await persistSettings(nextSettings);
+    } catch (error) {
+      notify("error", String(error));
+    }
+  };
+
   const theme = state?.theme_status;
   const activePatch = state?.surf_state.active_patch_name ?? "ROM d'origine / inconnu";
-
-  const nav = useMemo(() => [
-    ["dashboard", "Dashboard", Gauge],
-    ["theme", "AlyArchetype", Sparkles],
-    ["surf", "Surf Manager", ShipWheel],
-    ["vanity", "Vanity", ImageIcon],
-    ["settings", "Settings", SettingsIcon],
-  ] as const, []);
+  const hiddenTabs = settings.hidden_tabs ?? [];
+  const nav = useMemo(() => NAV_ITEMS.filter(([id]) => id === "dashboard" || !hiddenTabs.includes(id)), [hiddenTabs]);
+  const appStyle = { "--accent": settings.accent_color || "#9b7bdf" } as CSSProperties;
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" style={appStyle}>
       <aside className="sidebar">
         <div className="brand">
-          <img className="brand-mark" src={alyaIcon} alt="" />
-          <div className="brand-copy">
-            <strong>Alya Companion</strong>
-          </div>
+          <img className="brand-mark" src={alyaIcon} alt="Logo Alya Companion" />
+          <div className="brand-copy"><strong>Alya Companion</strong></div>
         </div>
         <nav>
           {nav.map(([id, label, Icon]) => (
@@ -203,23 +262,23 @@ function App() {
           ))}
         </nav>
         <div className="sidebar-foot">
+          <button className={`customize-trigger ${customizeOpen ? "active" : ""}`} onClick={() => setCustomizeOpen((value) => !value)} title="Personnaliser Alya Companion" aria-label="Personnaliser Alya Companion">
+            <Wrench size={18} />
+          </button>
           <StatusPill ok={Boolean(state?.pokemmo_detected)}>
             {state?.pokemmo_detected ? "PokeMMO détecté" : "PokeMMO non configuré"}
           </StatusPill>
           {state?.pokemmo_running && <span className="running-warning">PokeMMO est ouvert — modifications bloquées</span>}
-          <span className="app-version">Alya Companion {companionUpdate?.current_version ?? "1.0.0-rc.2"}{companionUpdate?.development_build ? " DEV" : ""}</span>
+          <span className="app-version">Alya Companion {companionUpdate?.current_version ?? "1.0.0-rc.4"}{companionUpdate?.development_build ? " DEV" : ""}</span>
         </div>
       </aside>
 
       <main className={`content ${tab === "dashboard" ? "dashboard-content" : ""}`}>
-        {tab === "dashboard" && (
-          <video className="dashboard-media" src={dashboardBackground} autoPlay loop muted playsInline aria-hidden="true" />
-        )}
+        {tab === "dashboard" && <video className="dashboard-media" src={dashboardBackground} autoPlay loop muted playsInline aria-hidden="true" />}
         {message && (
           <div className={`toast ${message.kind}`}>
             {message.kind === "ok" ? <CheckCircle2 size={18} /> : <CircleAlert size={18} />}
-            <span>{message.text}</span>
-            <button onClick={() => setMessage(null)}>×</button>
+            <span>{message.text}</span><button onClick={() => setMessage(null)}>×</button>
           </div>
         )}
 
@@ -238,7 +297,7 @@ function App() {
               </div>
             )}
             <div className="hero-card">
-              <div><span className="kicker">Alya Companion</span><h2>Un seul endroit pour tes outils PokeMMO.</h2><p>Gestion du thème AlyArchetype, patches Surf et prévisualisation vanity, sans piloter le client de jeu.</p></div>
+              <div><span className="kicker">Alya Companion</span><h2>Un seul endroit pour tes outils PokeMMO.</h2><p>Thème AlyArchetype, Surf Manager, Vanity, rotations légendaires, Shinyboard et forum dans une seule application.</p></div>
               <div className="hero-orb"><img src={alyaIcon} alt="" /></div>
             </div>
             <div className="grid three">
@@ -255,40 +314,23 @@ function App() {
                 <button className="text-button" onClick={() => setTab("surf")}>Gérer les patches →</button>
               </article>
               <article className="card">
-                <div className="card-title"><ImageIcon size={18} /><span>Vanity</span></div>
-                <strong className="big-value">Preview</strong>
-                <p>Le Vanity Booth s'affiche directement dans le panneau Alya Companion.</p>
-                <button className="text-button" onClick={() => setTab("vanity")}>Ouvrir le module →</button>
+                <div className="card-title"><TimerReset size={18} /><span>Rotations</span></div>
+                <strong className="big-value">{currentRotationLabel()}</strong>
+                <p>Les roamers de Kanto et Johto changent au 1er du mois à 00:00 UTC.</p>
+                <button className="text-button" onClick={() => setTab("rotations")}>Voir le calendrier →</button>
               </article>
             </div>
           </section>
         )}
 
-        {tab === "theme" && (
-          <ThemePage
-            theme={theme}
-            busy={busy}
-            onRefresh={() => run("theme-refresh", async () => {
-              const t = await api.refreshTheme();
-              setState((s) => s ? { ...s, theme_status: t } : s);
-            }, undefined, false)}
-            onUpdate={() => run("theme-update", async () => {
-              await api.updateTheme();
-              const t = await api.refreshTheme();
-              setState((s) => s ? { ...s, theme_status: t } : s);
-            }, "AlyArchetype a été mis à jour.", false)}
-            onRestore={() => run("theme-restore", async () => {
-              await api.restoreTheme();
-              const t = await api.refreshTheme();
-              setState((s) => s ? { ...s, theme_status: t } : s);
-            }, "Dernier backup AlyArchetype restauré.", false)}
-            configured={Boolean(settings.pokemmo_dir)}
-          />
-        )}
+        {tab === "theme" && <ThemePage theme={theme} busy={busy} configured={Boolean(settings.pokemmo_dir)} onRefresh={() => run("theme-refresh", async () => {
+          const refreshed = await api.refreshTheme();
+          setState((current) => current ? { ...current, theme_status: refreshed } : current);
+        }, "Release AlyArchetype vérifiée.", false)} onUpdate={() => run("theme-update", api.updateTheme, "AlyArchetype mis à jour.").then(() => refreshCompanionUpdate().catch(() => undefined))} onRestore={() => run("theme-restore", api.restoreTheme, "Backup AlyArchetype restauré.")} />}
 
         {tab === "surf" && (
           <section>
-            <header className="page-header"><div><p className="eyebrow">ROM patching</p><h1>Surf Manager</h1><p>Chaque patch repart du backup de la ROM originale afin d'éviter d'empiler les modifications.</p></div></header>
+            <header className="page-header"><div><p className="eyebrow">ROM Patching</p><h1>Surf Manager</h1><p>Chaque patch repart du backup de la ROM originale afin d'éviter d'empiler les modifications.</p></div></header>
             {state?.pokemmo_running && <div className="warning-box"><XCircle size={19} /><div><strong>PokeMMO est ouvert.</strong><span>Ferme le jeu avant d'appliquer ou restaurer une ROM.</span></div></div>}
             <div className="card current-surf"><span>Surf actif</span><strong>{activePatch}</strong><small>{state?.surf_state.rom_sha256 ? `SHA-256 : ${state.surf_state.rom_sha256.slice(0, 20)}…` : "Hash non disponible"}</small></div>
             <div className="patch-grid">
@@ -313,28 +355,14 @@ function App() {
           </section>
         )}
 
-        {tab === "vanity" && (
-          <section className="vanity-page">
-            <header className="page-header vanity-header">
-              <div><p className="eyebrow">Cosmetics</p><h1>Vanity Preview</h1><p>Le Vanity Booth est intégré directement dans Alya Companion. Aucun second onglet ni fenêtre séparée.</p></div>
-              <button className="ghost" disabled={!settings.vanity_url || Boolean(busy)} onClick={() => run("vanity-reload", api.reloadVanity, undefined, false)}><RefreshCw size={17}/> Recharger</button>
-            </header>
-            {!settings.vanity_url ? (
-              <div className="empty-state"><ImageIcon size={32}/><h3>URL Vanity non configurée</h3><p>Renseigne l'URL du Vanity Booth dans Settings.</p></div>
-            ) : (
-              <>
-                <div ref={vanityHostRef} className="vanity-embed-host" aria-label="Vanity Booth intégré">
-                  <div className="vanity-loading"><RefreshCw size={22}/><span>Chargement du Vanity Booth…</span></div>
-                </div>
-                <div className="vanity-source">Source : <strong>Crimson Core MMO — Vanity Booth</strong> · le contenu reste chargé depuis le site d'origine.</div>
-              </>
-            )}
-          </section>
-        )}
+        {tab === "vanity" && <ExternalWebviewPage hostRef={embeddedHostRef} eyebrow="Cosmetics" title="Vanity Preview" description="Le Vanity Booth est chargé directement dans Alya Companion." source="Crimson Core MMO — Vanity Booth" onReload={() => run("vanity-reload", () => api.reloadEmbeddedWebview("vanity"), undefined, false)} />}
+        {tab === "shinyboard" && <ExternalWebviewPage hostRef={embeddedHostRef} eyebrow="Shiny hunting" title="Shinyboard" description="Dashboard Shinyboard intégré directement à Alya Companion." source="shinyboard.net/dashboard" onReload={() => run("shinyboard-reload", () => api.reloadEmbeddedWebview("shinyboard"), undefined, false)} />}
+        {tab === "forum" && <ExternalWebviewPage hostRef={embeddedHostRef} eyebrow="Community" title="Forum PokeMMO" description="Le forum officiel PokeMMO intégré dans Alya Companion." source="forums.pokemmo.com" onReload={() => run("forum-reload", () => api.reloadEmbeddedWebview("forum"), undefined, false)} />}
+        {tab === "rotations" && <RotationsPage />}
 
         {tab === "settings" && (
           <section>
-            <header className="page-header"><div><p className="eyebrow">Configuration</p><h1>Settings</h1><p>Configure uniquement les chemins locaux. AlyArchetype utilise directement ton dépôt et ton format de release existants.</p></div></header>
+            <header className="page-header"><div><p className="eyebrow">Configuration</p><h1>Settings</h1><p>Configure les chemins locaux et les services utilisés par Alya Companion.</p></div></header>
             <div className="settings-card">
               <h2>PokeMMO & ROM</h2>
               <PathField label="Dossier PokeMMO" value={settings.pokemmo_dir} placeholder="C:\\Games\\PokeMMO" onChange={(v) => setSettings((s) => ({ ...s, pokemmo_dir: v }))} onBrowse={() => void pickDirectory("pokemmo_dir")} />
@@ -349,7 +377,6 @@ function App() {
                 <div><span>Installation</span><strong>data/mods/AlyArchetype.zip</strong></div>
                 <div><span>Backup</span><strong>data/mods/AlyArchetype.backup.zip</strong></div>
               </div>
-              <p className="settings-note">Si ton ancien AlyArchetype Updater est déjà installé, Alya Companion récupère automatiquement le chemin enregistré dans %APPDATA%\AlyArchetypeUpdater\pokemmo-path.txt au premier lancement.</p>
             </div>
             <div className="settings-card companion-update-card">
               <div className="settings-card-head">
@@ -357,7 +384,7 @@ function App() {
                 <button className="ghost" disabled={Boolean(busy)} onClick={() => run("companion-check", refreshCompanionUpdate, "Vérification terminée.", false)}><RefreshCw size={17}/> Vérifier</button>
               </div>
               <div className="fixed-config">
-                <div><span>Version installée</span><strong>{companionUpdate?.current_version ?? "1.0.0-rc.2"}{companionUpdate?.development_build ? " (DEV)" : ""}</strong></div>
+                <div><span>Version installée</span><strong>{companionUpdate?.current_version ?? "1.0.0-rc.4"}{companionUpdate?.development_build ? " (DEV)" : ""}</strong></div>
                 <div><span>Dernière release</span><strong>{companionUpdate?.latest_version ?? "Non vérifiée"}</strong></div>
                 <div><span>Dépôt de mise à jour</span><strong>{companionUpdate?.repository ?? "Jimbowiii/Alya-Companion"}</strong></div>
                 <div><span>Intégrité</span><strong>{companionUpdate?.checksum_available ? "SHA-256 disponible" : "En attente de release"}</strong></div>
@@ -372,8 +399,123 @@ function App() {
           </section>
         )}
       </main>
+
+      {customizeOpen && (
+        <div className="customizer-panel" role="dialog" aria-label="Personnaliser Alya Companion">
+          <div className="customizer-head"><div><span className="eyebrow">Interface</span><h2>Personnaliser</h2></div><button className="icon-button" onClick={() => setCustomizeOpen(false)} title="Fermer"><X size={17}/></button></div>
+          <div className="customizer-section">
+            <h3>Onglets du volet</h3>
+            <label className="tab-toggle locked"><input type="checkbox" checked readOnly /><span>Dashboard</span><small>Toujours affiché</small></label>
+            {NAV_ITEMS.filter(([id]) => id !== "dashboard").map(([id, label]) => (
+              <label className="tab-toggle" key={id}>
+                <input type="checkbox" checked={!hiddenTabs.includes(id)} onChange={() => void toggleTabVisibility(id)} />
+                <span>{label}</span>
+              </label>
+            ))}
+          </div>
+          <div className="customizer-section">
+            <h3>Couleur d'accentuation</h3>
+            <div className="accent-picker-row">
+              <input className="accent-picker" type="color" value={settings.accent_color || "#9b7bdf"} onChange={(e) => setSettings((s) => ({ ...s, accent_color: e.target.value }))} onBlur={(e) => void applyAccentColor(e.currentTarget.value)} aria-label="Couleur d'accentuation" />
+              <code>{settings.accent_color || "#9b7bdf"}</code>
+            </div>
+            <div className="accent-presets">
+              {["#9b7bdf", "#00a7ff", "#ff3b5c", "#ff8a32", "#1fcf9a", "#e7c84b"].map((color) => <button key={color} className="accent-dot" style={{ background: color }} onClick={() => void applyAccentColor(color)} aria-label={`Accent ${color}`} />)}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
+}
+
+function ExternalWebviewPage({ hostRef, eyebrow, title, description, source, onReload }: { hostRef: React.RefObject<HTMLDivElement | null>; eyebrow: string; title: string; description: string; source: string; onReload: () => void }) {
+  return <section className="embedded-page">
+    <header className="page-header embedded-header">
+      <div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p>{description}</p></div>
+      <button className="ghost" onClick={onReload}><RefreshCw size={17}/> Recharger</button>
+    </header>
+    <div ref={hostRef} className="embedded-webview-host" aria-label={`${title} intégré`}>
+      <div className="embedded-loading"><RefreshCw size={22}/><span>Chargement de {title}…</span></div>
+    </div>
+    <div className="embedded-source">Source : <strong>{source}</strong> · le contenu reste chargé depuis le site d'origine.</div>
+  </section>;
+}
+
+function RotationsPage() {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const date = new Date(now);
+  const index = date.getUTCMonth() % ROTATION_CYCLE.length;
+  const current = ROTATION_CYCLE[index];
+  const next = ROTATION_CYCLE[(index + 1) % ROTATION_CYCLE.length];
+  const after = ROTATION_CYCLE[(index + 2) % ROTATION_CYCLE.length];
+  const nextReset = Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1, 0, 0, 0);
+  const remaining = Math.max(0, nextReset - now);
+
+  const monthLabel = date.toLocaleDateString("fr-FR", { month: "long", year: "numeric", timeZone: "UTC" });
+  const resetDate = new Date(nextReset);
+  const localReset = resetDate.toLocaleString("fr-FR", { dateStyle: "full", timeStyle: "short" });
+
+  return <section className="rotations-page">
+    <header className="page-header"><div><p className="eyebrow">Roaming Legendaries</p><h1>Rotations</h1><p>Cycle mensuel fixe des oiseaux de Kanto et des fauves de Johto.</p></div></header>
+    <div className="rotation-title-row"><div><span>Rotation actuelle</span><strong>{capitalize(monthLabel)}</strong></div><span className="utc-badge">Reset 00:00 UTC</span></div>
+    <div className="legend-grid">
+      <LegendCard legendary={current.bird} active />
+      <LegendCard legendary={current.beast} active />
+    </div>
+
+    <div className="reset-timer-card">
+      <div><span>Prochain reset</span><strong>{formatCountdown(remaining)}</strong></div>
+      <small>{localReset} en heure locale · 00:00 UTC</small>
+    </div>
+
+    <div className="rotation-subtitle"><span>Prochaine rotation</span></div>
+    <div className="legend-grid next">
+      <LegendCard legendary={next.bird} />
+      <LegendCard legendary={next.beast} />
+    </div>
+
+    <div className="cached-rotation">
+      <span>Rotation suivante en cache</span>
+      <div><MiniLegend legendary={after.bird} /><span>+</span><MiniLegend legendary={after.beast} /></div>
+    </div>
+    <p className="rotation-note">Le calendrier est calculé localement à partir du cycle fixe : Électhor/Entei → Sulfura/Suicune → Artikodin/Raikou. Aucune requête réseau n'est nécessaire pour connaître les rotations futures.</p>
+  </section>;
+}
+
+function LegendCard({ legendary, active = false }: { legendary: { name: string; region: string; id: number }; active?: boolean }) {
+  return <article className={`legend-card ${active ? "active" : ""}`}>
+    <div className="legend-sprite-wrap"><img className="legend-sprite" src={spriteUrl(legendary.id)} alt={`Sprite animé de ${legendary.name}`} /></div>
+    <div><span className="region-badge">{legendary.region}</span><h2>{legendary.name}</h2></div>
+  </article>;
+}
+
+function MiniLegend({ legendary }: { legendary: { name: string; region: string; id: number } }) {
+  return <div className="mini-legend"><img src={spriteUrl(legendary.id)} alt="" /><div><strong>{legendary.name}</strong><small>{legendary.region}</small></div></div>;
+}
+
+function currentRotationLabel() {
+  const month = new Date().getUTCMonth();
+  const rotation = ROTATION_CYCLE[month % ROTATION_CYCLE.length];
+  return `${rotation.beast.name} · ${rotation.bird.name}`;
+}
+
+function formatCountdown(milliseconds: number) {
+  const total = Math.floor(milliseconds / 1000);
+  const days = Math.floor(total / 86400);
+  const hours = Math.floor((total % 86400) / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  return `${days}j ${String(hours).padStart(2, "0")}h ${String(minutes).padStart(2, "0")}m ${String(seconds).padStart(2, "0")}s`;
+}
+
+function capitalize(value: string) {
+  return value.length ? value[0].toUpperCase() + value.slice(1) : value;
 }
 
 function ThemePage({ theme, busy, configured, onRefresh, onUpdate, onRestore }: { theme: ThemeStatus | null | undefined; busy: string | null; configured: boolean; onRefresh: () => void; onUpdate: () => void; onRestore: () => void }) {
