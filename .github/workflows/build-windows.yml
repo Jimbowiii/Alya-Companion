@@ -31,7 +31,7 @@ jobs:
       - name: Build Alya Companion
         run: npm run tauri build
 
-            - name: Prepare deterministic release assets
+      - name: Prepare deterministic release assets
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path release | Out-Null
