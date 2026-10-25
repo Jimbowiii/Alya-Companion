@@ -1,5 +1,22 @@
 $ErrorActionPreference = "Stop"
 
+function Get-Sha256Hex {
+  param([Parameter(Mandatory = $true)][string]$Path)
+
+  $stream = [System.IO.File]::OpenRead($Path)
+  try {
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+      $hashBytes = $sha256.ComputeHash($stream)
+      return ([System.BitConverter]::ToString($hashBytes)).Replace("-", "").ToLowerInvariant()
+    } finally {
+      $sha256.Dispose()
+    }
+  } finally {
+    $stream.Dispose()
+  }
+}
+
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $Version = "3.2.2"
@@ -20,7 +37,7 @@ New-Item -ItemType Directory -Force -Path $BinaryDir | Out-Null
 
 # Ne reutilise un ancien sidecar que s'il correspond exactement au binaire 3.2.2 attendu.
 if (Test-Path $Sidecar) {
-  $ExistingHash = (Get-FileHash -Algorithm SHA256 -Path $Sidecar).Hash.ToLowerInvariant()
+  $ExistingHash = (Get-Sha256Hex -Path $Sidecar)
   if ($ExistingHash -eq $ExpectedExeSha256) {
     Write-Host "xdelta3 $Version deja pret : $Sidecar" -ForegroundColor DarkGreen
     exit 0
@@ -38,7 +55,7 @@ try {
   Write-Host "Telechargement de xdelta3 $Version depuis le depot officiel..." -ForegroundColor Cyan
   Invoke-WebRequest -Uri $Url -OutFile $Archive -UseBasicParsing
 
-  $ActualArchiveHash = (Get-FileHash -Algorithm SHA256 -Path $Archive).Hash.ToLowerInvariant()
+  $ActualArchiveHash = (Get-Sha256Hex -Path $Archive)
   if ($ActualArchiveHash -ne $ExpectedArchiveSha256) {
     throw "SHA-256 de l'archive xdelta3 invalide. Attendu: $ExpectedArchiveSha256 / recu: $ActualArchiveHash"
   }
@@ -49,7 +66,7 @@ try {
     throw "xdelta3.exe est introuvable dans l'archive officielle."
   }
 
-  $ActualExeHash = (Get-FileHash -Algorithm SHA256 -Path $Exe.FullName).Hash.ToLowerInvariant()
+  $ActualExeHash = (Get-Sha256Hex -Path $Exe.FullName)
   if ($ActualExeHash -ne $ExpectedExeSha256) {
     throw "SHA-256 de xdelta3.exe invalide. Attendu: $ExpectedExeSha256 / recu: $ActualExeHash"
   }
