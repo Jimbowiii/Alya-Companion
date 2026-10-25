@@ -31,29 +31,44 @@ jobs:
       - name: Build Alya Companion
         run: npm run tauri build
 
-      - name: Prepare deterministic release assets
+            - name: Prepare deterministic release assets
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path release | Out-Null
+
           $installer = Get-ChildItem "src-tauri/target/release/bundle/nsis/*.exe" | Select-Object -First 1
-          if (-not $installer) { throw "Installateur NSIS introuvable" }
+          if (-not $installer) {
+            throw "Installateur NSIS introuvable"
+          }
+
           $target = "release/Alya-Companion-Windows-x64-setup.exe"
 
+          # Copier d'abord l'installateur vers le nom stable attendu par l'updater
+          Copy-Item $installer.FullName $target -Force
+
+          # Calcul SHA-256 compatible PowerShell 7 / GitHub Actions
           $stream = [System.IO.File]::OpenRead($target)
+
           try {
             $sha256 = [System.Security.Cryptography.SHA256]::Create()
+
             try {
               $hashBytes = $sha256.ComputeHash($stream)
               $hash = ([System.BitConverter]::ToString($hashBytes)).Replace("-", "").ToLowerInvariant()
-            } finally {
+            }
+            finally {
               $sha256.Dispose()
             }
-          } finally {
+          }
+          finally {
             $stream.Dispose()
           }
 
-          "$hash  Alya-Companion-Windows-x64-setup.exe" | Set-Content "release/Alya-Companion-Windows-x64-setup.exe.sha256" -Encoding ascii
-          Copy-Item "src-tauri/target/release/bundle/msi/*.msi" "release/" -Force
+          "$hash  Alya-Companion-Windows-x64-setup.exe" |
+            Set-Content "release/Alya-Companion-Windows-x64-setup.exe.sha256" -Encoding ascii
+
+          Write-Host "Installateur prepare : $target"
+          Write-Host "SHA-256 : $hash"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
