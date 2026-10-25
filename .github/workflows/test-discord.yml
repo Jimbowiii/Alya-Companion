@@ -8,7 +8,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Send test message to Discord
+      - name: Send test message to Discord forum
         shell: pwsh
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
@@ -20,18 +20,21 @@ jobs:
           $payload = @{
             username = "Alya Companion"
             thread_name = "Test Alya Companion"
+
             embeds = @(
               @{
                 title = "Test Alya Companion"
-                description = "Le webhook Discord fonctionne correctement."
+                description = "Le webhook Discord Forum fonctionne correctement."
                 color = 7506394
+
                 fields = @(
                   @{
                     name = "Statut"
-                    value = "Connexion GitHub Actions -> Discord OK"
+                    value = "Connexion GitHub Actions -> Discord Forum OK"
                     inline = $false
                   }
                 )
+
                 footer = @{
                   text = "Alya Companion"
                 }
@@ -47,4 +50,4 @@ jobs:
             -ContentType "application/json" `
             -Body $json
 
-          Write-Host "Message de test Discord envoye."
+          Write-Host "Post de test Discord Forum envoye."
