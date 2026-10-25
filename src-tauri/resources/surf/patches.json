@@ -11,6 +11,16 @@
       "expected_output_sha256": null
     },
     {
+      "id": "kyogre-shiny",
+      "name": "Kyogre Shiny",
+      "description": "Remplace le sprite de Surf par Kyogre Shiny.",
+      "compatibility": "Pokémon Blanche FR",
+      "patch_file": "kyogre-shiny.xdelta",
+      "patch_sha256": "fb24563c700aae65226a631d3e80c94f44f61d55e6d61b79f546a459663d3866",
+      "expected_source_sha256": null,
+      "expected_output_sha256": null
+    },
+    {
       "id": "primal-kyogre-shiny",
       "name": "Primal Kyogre Shiny",
       "description": "Remplace le sprite de Surf par Primal Kyogre Shiny.",

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.0-rc.2
+
+- Nouvelle icône Alya Companion dans Windows, l’installateur et la sidebar.
+- Suppression du sous-titre « PokéMMO toolkit ».
+- Nouveau fond animé du Dashboard avec cartes translucides et légèrement floutées.
+- Ajout du patch Surf Kyogre Shiny.
+- Distribution RC en installateur NSIS uniquement.
+- Correctifs du workflow GitHub Actions et préparation xdelta3.
+
 ## 1.0.0-rc.1
 
 - Première release candidate distribuable.

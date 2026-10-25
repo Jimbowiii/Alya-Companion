@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { api } from "./bridge";
 import type { AppState, CompanionUpdateStatus, Settings, SurfPatch, ThemeStatus } from "./types";
+import alyaIcon from "./assets/alya-icon.png";
+import dashboardBackground from "./assets/dashboard-background.webm";
 
 type Tab = "dashboard" | "theme" | "surf" | "vanity" | "settings";
 
@@ -188,10 +190,9 @@ function App() {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-mark">A</div>
-          <div>
+          <img className="brand-mark" src={alyaIcon} alt="" />
+          <div className="brand-copy">
             <strong>Alya Companion</strong>
-            <small>PokéMMO toolkit</small>
           </div>
         </div>
         <nav>
@@ -206,11 +207,14 @@ function App() {
             {state?.pokemmo_detected ? "PokeMMO détecté" : "PokeMMO non configuré"}
           </StatusPill>
           {state?.pokemmo_running && <span className="running-warning">PokeMMO est ouvert — modifications bloquées</span>}
-          <span className="app-version">Alya Companion {companionUpdate?.current_version ?? "1.0.0-rc.1"}{companionUpdate?.development_build ? " DEV" : ""}</span>
+          <span className="app-version">Alya Companion {companionUpdate?.current_version ?? "1.0.0-rc.2"}{companionUpdate?.development_build ? " DEV" : ""}</span>
         </div>
       </aside>
 
-      <main className="content">
+      <main className={`content ${tab === "dashboard" ? "dashboard-content" : ""}`}>
+        {tab === "dashboard" && (
+          <video className="dashboard-media" src={dashboardBackground} autoPlay loop muted playsInline aria-hidden="true" />
+        )}
         {message && (
           <div className={`toast ${message.kind}`}>
             {message.kind === "ok" ? <CheckCircle2 size={18} /> : <CircleAlert size={18} />}
@@ -235,7 +239,7 @@ function App() {
             )}
             <div className="hero-card">
               <div><span className="kicker">Alya Companion</span><h2>Un seul endroit pour tes outils PokeMMO.</h2><p>Gestion du thème AlyArchetype, patches Surf et prévisualisation vanity, sans piloter le client de jeu.</p></div>
-              <div className="hero-orb">A</div>
+              <div className="hero-orb"><img src={alyaIcon} alt="" /></div>
             </div>
             <div className="grid three">
               <article className="card">
@@ -353,7 +357,7 @@ function App() {
                 <button className="ghost" disabled={Boolean(busy)} onClick={() => run("companion-check", refreshCompanionUpdate, "Vérification terminée.", false)}><RefreshCw size={17}/> Vérifier</button>
               </div>
               <div className="fixed-config">
-                <div><span>Version installée</span><strong>{companionUpdate?.current_version ?? "1.0.0-rc.1"}{companionUpdate?.development_build ? " (DEV)" : ""}</strong></div>
+                <div><span>Version installée</span><strong>{companionUpdate?.current_version ?? "1.0.0-rc.2"}{companionUpdate?.development_build ? " (DEV)" : ""}</strong></div>
                 <div><span>Dernière release</span><strong>{companionUpdate?.latest_version ?? "Non vérifiée"}</strong></div>
                 <div><span>Dépôt de mise à jour</span><strong>{companionUpdate?.repository ?? "Jimbowiii/Alya-Companion"}</strong></div>
                 <div><span>Intégrité</span><strong>{companionUpdate?.checksum_available ? "SHA-256 disponible" : "En attente de release"}</strong></div>

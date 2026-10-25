@@ -4,7 +4,7 @@
 
 1. Créer le dépôt GitHub `Jimbowiii/Alya-Companion`.
 2. Pousser le projet dans ce dépôt.
-3. Créer/pousser le tag `v1.0.0-rc.1`.
+3. Créer/pousser le tag `v1.0.0-rc.2`.
 4. GitHub Actions construit automatiquement Windows et publie la release avec :
    - `Alya-Companion-Windows-x64-setup.exe`
    - `Alya-Companion-Windows-x64-setup.exe.sha256`

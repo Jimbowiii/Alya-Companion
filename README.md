@@ -1,4 +1,4 @@
-# Alya Companion v1.0.0-rc.1
+# Alya Companion v1.0.0-rc.2
 
 Alya Companion est un compagnon Windows externe pour PokeMMO. Il ne lance pas le jeu, n'injecte rien dans le processus PokeMMO et n'automatise aucune action en jeu.
 
@@ -59,7 +59,7 @@ Si le dépôt final porte un autre nom, modifier `ALYA_COMPANION_REPO` dans `src
 
 ### Tester le cycle de mise à jour RC
 
-1. Publier `v1.0.0-rc.1` et installer son `.exe`.
+1. Publier `v1.0.0-rc.2` et installer son `.exe`.
 2. Modifier l'application et passer les versions de `package.json`, `src-tauri/Cargo.toml` et `src-tauri/tauri.conf.json` à `1.0.0-rc.2`.
 3. Publier le tag `v1.0.0-rc.2`.
 4. Ouvrir la version rc.1 : elle détectera rc.2 et proposera **Mettre à jour**.

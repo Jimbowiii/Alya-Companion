@@ -161,3 +161,101 @@ button.compact {
     width: 100%;
   }
 }
+
+/* Alya Companion RC2 visual identity */
+.brand-mark {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  object-fit: cover;
+  display: block;
+  flex: 0 0 auto;
+  background: #111218;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.12), 0 8px 22px rgba(0,0,0,.28);
+}
+.brand-copy { min-width: 0; }
+.brand-copy strong { display:block; }
+
+.hero-orb {
+  padding: 0;
+  overflow: hidden;
+  background: rgba(12, 14, 20, .42);
+  border-color: rgba(255,255,255,.18);
+  box-shadow: 0 16px 45px rgba(0,0,0,.24);
+}
+.hero-orb img { width:100%; height:100%; object-fit:cover; display:block; }
+
+/* Dashboard background: optimized WebM generated from the supplied GIF. */
+.content.dashboard-content {
+  position: relative;
+  isolation: isolate;
+  max-width: none;
+  overflow: hidden;
+  min-height: 100vh;
+}
+.dashboard-content > section,
+.dashboard-content > .toast {
+  position: relative;
+  z-index: 3;
+}
+.dashboard-content > section {
+  width: 100%;
+  max-width: 1196px;
+  margin: 0 auto;
+}
+.dashboard-media {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  z-index: 0;
+  pointer-events: none;
+}
+.dashboard-content::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(5,7,12,.42), rgba(5,7,12,.66)),
+    radial-gradient(circle at 78% 12%, rgba(68,35,116,.18), transparent 36%);
+}
+.dashboard-content .page-header h1,
+.dashboard-content .page-header .eyebrow {
+  text-shadow: 0 2px 16px rgba(0,0,0,.55);
+}
+.dashboard-content .hero-card,
+.dashboard-content .card,
+.dashboard-content .update-banner {
+  background: rgba(12, 14, 21, .48);
+  border-color: rgba(255,255,255,.16);
+  -webkit-backdrop-filter: blur(14px) saturate(118%);
+  backdrop-filter: blur(14px) saturate(118%);
+  box-shadow: 0 18px 42px rgba(0,0,0,.20);
+}
+.dashboard-content .hero-card {
+  background: linear-gradient(135deg, rgba(12,14,21,.52), rgba(25,16,34,.42));
+}
+.dashboard-content .card p,
+.dashboard-content .hero-card p {
+  color: rgba(235,238,246,.76);
+}
+.dashboard-content .card-title {
+  color: rgba(246,247,251,.88);
+}
+.dashboard-content .ghost {
+  background: rgba(12,14,21,.42);
+  border-color: rgba(255,255,255,.17);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-media { display:none; }
+  .content.dashboard-content {
+    background: radial-gradient(circle at 30% 10%, #3a1728, transparent 45%), radial-gradient(circle at 85% 35%, #102a56, transparent 45%), #0c0d12;
+  }
+}

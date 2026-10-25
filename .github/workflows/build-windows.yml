@@ -20,7 +20,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -42,31 +41,22 @@ jobs:
           }
 
           $target = "release/Alya-Companion-Windows-x64-setup.exe"
-
-          # Copier d'abord l'installateur vers le nom stable attendu par l'updater
           Copy-Item $installer.FullName $target -Force
 
-          # Calcul SHA-256 compatible PowerShell 7 / GitHub Actions
           $stream = [System.IO.File]::OpenRead($target)
-
           try {
             $sha256 = [System.Security.Cryptography.SHA256]::Create()
-
             try {
               $hashBytes = $sha256.ComputeHash($stream)
               $hash = ([System.BitConverter]::ToString($hashBytes)).Replace("-", "").ToLowerInvariant()
-            }
-            finally {
+            } finally {
               $sha256.Dispose()
             }
-          }
-          finally {
+          } finally {
             $stream.Dispose()
           }
 
-          "$hash  Alya-Companion-Windows-x64-setup.exe" |
-            Set-Content "release/Alya-Companion-Windows-x64-setup.exe.sha256" -Encoding ascii
-
+          "$hash  Alya-Companion-Windows-x64-setup.exe" | Set-Content "release/Alya-Companion-Windows-x64-setup.exe.sha256" -Encoding ascii
           Write-Host "Installateur prepare : $target"
           Write-Host "SHA-256 : $hash"
 
@@ -85,55 +75,3 @@ jobs:
           files: |
             release/Alya-Companion-Windows-x64-setup.exe
             release/Alya-Companion-Windows-x64-setup.exe.sha256
-      - name: Announce release on Discord
-        if: success()
-        shell: pwsh
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          RELEASE_TAG: ${{ github.ref_name }}
-          REPOSITORY: ${{ github.repository }}
-          SERVER_URL: ${{ github.server_url }}
-        run: |
-          if ([string]::IsNullOrWhiteSpace($env:DISCORD_WEBHOOK_URL)) {
-            Write-Host "DISCORD_WEBHOOK_URL absent. Annonce Discord ignoree."
-            exit 0
-          }
-
-          $releaseUrl = "$env:SERVER_URL/$env:REPOSITORY/releases/tag/$env:RELEASE_TAG"
-          $downloadUrl = "$env:SERVER_URL/$env:REPOSITORY/releases/download/$env:RELEASE_TAG/Alya-Companion-Windows-x64-setup.exe"
-
-          $payload = @{
-            username = "Alya Companion"
-            embeds = @(
-              @{
-                title = "Nouvelle version d'Alya Companion disponible !"
-                description = "La version **$env:RELEASE_TAG** vient d'etre publiee."
-                color = 7506394
-                fields = @(
-                  @{
-                    name = "Telecharger"
-                    value = "[Telecharger Alya Companion]($downloadUrl)"
-                    inline = $false
-                  },
-                  @{
-                    name = "Release GitHub"
-                    value = "[Voir les details de la version]($releaseUrl)"
-                    inline = $false
-                  }
-                )
-                footer = @{
-                  text = "Alya Companion"
-                }
-              }
-            )
-          }
-
-          $json = $payload | ConvertTo-Json -Depth 10
-
-          Invoke-RestMethod `
-            -Uri $env:DISCORD_WEBHOOK_URL `
-            -Method Post `
-            -ContentType "application/json" `
-            -Body $json
-
-          Write-Host "Annonce Discord envoyee pour $env:RELEASE_TAG"

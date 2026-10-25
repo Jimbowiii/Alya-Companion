@@ -1,0 +1,17 @@
+ALYA COMPANION v1.0.0-rc.2 — OVERLAY
+
+1. Ferme Alya Companion DEV si ouvert.
+2. Copie tout le contenu de ce dossier à la racine de ton repo Alya-Companion actuel.
+3. Accepte « Remplacer les fichiers ».
+4. Dans PowerShell, à la racine du repo :
+     npm install
+     npm run tauri dev
+5. Vérifie le Dashboard, l'icône et les 3 patches Surf.
+6. Quand c'est validé :
+     git add .
+     git commit -m "Alya Companion v1.0.0-rc.2"
+     git push origin main
+     git tag v1.0.0-rc.2
+     git push origin v1.0.0-rc.2
+
+Le workflow GitHub Actions inclus publie uniquement le setup NSIS .exe + son SHA-256.
