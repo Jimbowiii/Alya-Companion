@@ -72,9 +72,17 @@ try {
   }
 
   Copy-Item -Force $Exe.FullName $Sidecar
-  & $Sidecar -V *> $null
-  if ($LASTEXITCODE -ne 0) {
-    throw "Le binaire xdelta3 extrait ne s'execute pas correctement."
+
+  # xdelta3 -V ecrit sa version sur stderr. Windows PowerShell 5.1 peut
+  # convertir cette sortie stderr en NativeCommandError lorsque
+  # $ErrorActionPreference = "Stop". Start-Process garde stdout/stderr
+  # hors du pipeline PowerShell et permet de verifier uniquement le code retour.
+  $StdOutFile = Join-Path $TempRoot "xdelta-version.stdout.txt"
+  $StdErrFile = Join-Path $TempRoot "xdelta-version.stderr.txt"
+  $Probe = Start-Process -FilePath $Sidecar -ArgumentList "-V" -Wait -PassThru `
+    -RedirectStandardOutput $StdOutFile -RedirectStandardError $StdErrFile
+  if ($Probe.ExitCode -ne 0) {
+    throw "Le binaire xdelta3 extrait ne s'execute pas correctement (code $($Probe.ExitCode))."
   }
 
   Write-Host "xdelta3 $Version pret pour Tauri : $Sidecar" -ForegroundColor Green
