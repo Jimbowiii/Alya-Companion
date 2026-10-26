@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.0.0-rc.7] - 2026-10-26
+
+### ðŸ› Correctif de publication
+
+- Correction du job GitHub Actions **Read changelog** qui Ã©chouait Ã  cause du paramÃ¨tre `-Encoding utf8` prÃ©sent deux fois.
+- Lecture du `CHANGELOG.md` explicitement en UTF-8 afin de conserver correctement les accents et les emojis dans les GitHub Releases et les annonces Discord.
+- Injection vÃ©rifiÃ©e de `VITE_SUPABASE_URL` et `VITE_SUPABASE_ANON_KEY` pendant le build de production.
+- Aucun changement fonctionnel supplÃ©mentaire par rapport Ã  la RC6 : cette version corrige uniquement le pipeline de publication.
+
 ## [1.0.0-rc.6] - 2026-10-26
 
 ### 🐛 Correctifs de publication
