@@ -1,6 +1,6 @@
 [package]
 name = "alya-companion"
-version = "1.0.0-rc.4"
+version = "1.0.0-rc.5"
 description = "A lightweight companion for AlyArchetype, Surf patches and vanity previews."
 authors = ["Alya Companion"]
 edition = "2021"
@@ -25,6 +25,9 @@ tempfile = "3"
 sysinfo = "0.37"
 url = "2"
 semver = "1"
+tauri-plugin-deep-link = "2.6.2"
+tauri-plugin-opener = "2.7.2"
+tauri-plugin-single-instance = { version = "2.5.4", features = ["deep-link"] }
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"

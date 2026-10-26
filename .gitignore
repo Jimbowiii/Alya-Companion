@@ -7,3 +7,7 @@ src-tauri/target/
 # xdelta3 sidecar is downloaded/verified by scripts/prepare-xdelta.ps1
 src-tauri/binaries/*.exe
 !src-tauri/binaries/.gitkeep
+
+.env
+
+

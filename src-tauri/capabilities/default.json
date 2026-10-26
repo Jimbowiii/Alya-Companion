@@ -1,13 +1,18 @@
 {
-  "$schema": "../gen/schemas/desktop-schema.json",
-  "identifier": "default",
-  "description": "Default capabilities for Alya Companion",
-  "windows": [
-    "main"
-  ],
-  "permissions": [
-    "core:default",
-    "dialog:allow-open",
-    "updater:default"
-  ]
+    "$schema":  "../gen/schemas/desktop-schema.json",
+    "identifier":  "default",
+    "description":  "Default capabilities for Alya Companion",
+    "windows":  [
+                    "main"
+                ],
+    "permissions":  [
+                        "core:default",
+                        "dialog:allow-open",
+                        "updater:default",
+                        "core:event:default",
+                        "deep-link:default",
+                        "deep-link:allow-register",
+                        "deep-link:allow-is-registered",
+                        "opener:default"
+                    ]
 }

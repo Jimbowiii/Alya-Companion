@@ -8,8 +8,8 @@ use std::{
     process::Command,
 };
 use sysinfo::System;
-use tauri::webview::WebviewBuilder;
 use tauri::{AppHandle, LogicalPosition, LogicalSize, Manager, WebviewUrl};
+use tauri::webview::WebviewBuilder;
 use tauri_plugin_shell::ShellExt;
 use tempfile::tempdir;
 use url::Url;
@@ -58,18 +58,16 @@ impl Default for Settings {
                 "surf".into(),
                 "vanity".into(),
                 "shinyboard".into(),
+                "shinywar".into(),
                 "rotations".into(),
                 "forum".into(),
                 "settings".into(),
             ],
-            dashboard_modules: vec![
-                "theme".into(),
-                "surf".into(),
-                "rotations".into(),
-            ],
+            dashboard_modules: vec!["theme".into(), "surf".into(), "rotations".into()],
         }
     }
 }
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 struct SurfState {
     managed_rom_path: Option<String>,
@@ -134,6 +132,7 @@ struct GitHubAsset {
     browser_download_url: String,
 }
 
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct SurfPatch {
     id: String,
@@ -183,8 +182,7 @@ fn load_settings(app: &AppHandle) -> Result<Settings, String> {
     let path = settings_path(app)?;
     let mut settings = if path.exists() {
         let data = fs::read_to_string(&path).map_err(|e| e.to_string())?;
-        serde_json::from_str::<Settings>(&data)
-            .map_err(|e| format!("Configuration invalide: {e}"))?
+        serde_json::from_str::<Settings>(&data).map_err(|e| format!("Configuration invalide: {e}"))?
     } else {
         Settings::default()
     };
@@ -221,7 +219,7 @@ fn load_surf_state(app: &AppHandle) -> Result<SurfState, String> {
         return Ok(SurfState::default());
     }
     let data = fs::read_to_string(path).map_err(|e| e.to_string())?;
-    serde_json::from_str(&data).map_err(|e| format!("État Surf invalide: {e}"))
+    serde_json::from_str(&data).map_err(|e| format!("Ãƒâ€°tat Surf invalide: {e}"))
 }
 
 fn persist_surf_state(app: &AppHandle, state: &SurfState) -> Result<(), String> {
@@ -233,25 +231,20 @@ fn validate_settings(settings: &Settings) -> Result<(), String> {
     if !settings.pokemmo_dir.trim().is_empty() {
         let base = Path::new(settings.pokemmo_dir.trim());
         if !base.is_dir() {
-            return Err("Le dossier PokeMMO configuré n'existe pas".into());
+            return Err("Le dossier PokeMMO configurÃƒÂ© n'existe pas".into());
         }
         if !base.join("data").join("mods").is_dir() {
-            return Err("Le dossier sélectionné ne contient pas data\\mods".into());
+            return Err("Le dossier sÃƒÂ©lectionnÃƒÂ© ne contient pas data\\mods".into());
         }
     }
     if !settings.vanity_url.trim().is_empty() {
-        let url = Url::parse(settings.vanity_url.trim())
-            .map_err(|_| "URL Vanity invalide".to_string())?;
+        let url = Url::parse(settings.vanity_url.trim()).map_err(|_| "URL Vanity invalide".to_string())?;
         if url.scheme() != "https" && url.scheme() != "http" {
             return Err("L'URL Vanity doit utiliser http ou https".into());
         }
     }
     let accent = settings.accent_color.trim();
-    if !accent.is_empty()
-        && !(accent.len() == 7
-            && accent.starts_with('#')
-            && accent[1..].chars().all(|c| c.is_ascii_hexdigit()))
-    {
+    if !accent.is_empty() && !(accent.len() == 7 && accent.starts_with('#') && accent[1..].chars().all(|c| c.is_ascii_hexdigit())) {
         return Err("Couleur d'accentuation invalide".into());
     }
     Ok(())
@@ -279,16 +272,11 @@ fn ensure_game_closed() -> Result<(), String> {
 
 fn pokemmo_mods_dir(settings: &Settings) -> Result<PathBuf, String> {
     if settings.pokemmo_dir.trim().is_empty() {
-        return Err("Le dossier PokeMMO n'est pas configuré".into());
+        return Err("Le dossier PokeMMO n'est pas configurÃƒÂ©".into());
     }
-    let mods = Path::new(settings.pokemmo_dir.trim())
-        .join("data")
-        .join("mods");
+    let mods = Path::new(settings.pokemmo_dir.trim()).join("data").join("mods");
     if !mods.is_dir() {
-        return Err(format!(
-            "data\\mods introuvable dans {}",
-            settings.pokemmo_dir
-        ));
+        return Err(format!("data\\mods introuvable dans {}", settings.pokemmo_dir));
     }
     Ok(mods)
 }
@@ -305,18 +293,14 @@ fn read_zip_version(zip_path: &Path) -> Result<String, String> {
     if !zip_path.is_file() {
         return Ok("0.0.0".into());
     }
-    let file = File::open(zip_path)
-        .map_err(|e| format!("Impossible d'ouvrir {}: {e}", zip_path.display()))?;
-    let mut archive =
-        ZipArchive::new(file).map_err(|e| format!("ZIP AlyArchetype invalide: {e}"))?;
+    let file = File::open(zip_path).map_err(|e| format!("Impossible d'ouvrir {}: {e}", zip_path.display()))?;
+    let mut archive = ZipArchive::new(file).map_err(|e| format!("ZIP AlyArchetype invalide: {e}"))?;
     let mut entry = match archive.by_name("version.txt") {
         Ok(entry) => entry,
         Err(_) => return Ok("0.0.0".into()),
     };
     let mut version = String::new();
-    entry
-        .read_to_string(&mut version)
-        .map_err(|e| e.to_string())?;
+    entry.read_to_string(&mut version).map_err(|e| e.to_string())?;
     let version = version.trim().to_string();
     if version.is_empty() {
         Ok("0.0.0".into())
@@ -326,16 +310,15 @@ fn read_zip_version(zip_path: &Path) -> Result<String, String> {
 }
 
 fn validate_theme_zip(zip_path: &Path) -> Result<String, String> {
-    let file =
-        File::open(zip_path).map_err(|e| format!("Impossible d'ouvrir le ZIP téléchargé: {e}"))?;
-    let mut archive = ZipArchive::new(file).map_err(|e| format!("ZIP téléchargé invalide: {e}"))?;
+    let file = File::open(zip_path).map_err(|e| format!("Impossible d'ouvrir le ZIP tÃƒÂ©lÃƒÂ©chargÃƒÂ©: {e}"))?;
+    let mut archive = ZipArchive::new(file).map_err(|e| format!("ZIP tÃƒÂ©lÃƒÂ©chargÃƒÂ© invalide: {e}"))?;
 
     archive
         .by_name("info.xml")
-        .map_err(|_| "ZIP invalide : info.xml absent à la racine.".to_string())?;
+        .map_err(|_| "ZIP invalide : info.xml absent ÃƒÂ  la racine.".to_string())?;
     archive
         .by_name("version.txt")
-        .map_err(|_| "ZIP invalide : version.txt absent à la racine.".to_string())?;
+        .map_err(|_| "ZIP invalide : version.txt absent ÃƒÂ  la racine.".to_string())?;
     drop(archive);
 
     let version = read_zip_version(zip_path)?;
@@ -346,10 +329,7 @@ fn validate_theme_zip(zip_path: &Path) -> Result<String, String> {
 }
 
 fn normalize_version(value: &str) -> String {
-    value
-        .trim()
-        .trim_start_matches(|c| c == 'v' || c == 'V')
-        .to_string()
+    value.trim().trim_start_matches(|c| c == 'v' || c == 'V').to_string()
 }
 
 fn numeric_version(value: &str) -> Option<Vec<u64>> {
@@ -415,10 +395,7 @@ fn build_state(app: &AppHandle) -> Result<AppState, String> {
         None
     };
     let pokemmo_detected = !settings.pokemmo_dir.trim().is_empty()
-        && Path::new(settings.pokemmo_dir.trim())
-            .join("data")
-            .join("mods")
-            .is_dir();
+        && Path::new(settings.pokemmo_dir.trim()).join("data").join("mods").is_dir();
     Ok(AppState {
         pokemmo_detected,
         pokemmo_running: pokemmo_running(),
@@ -431,57 +408,40 @@ fn build_state(app: &AppHandle) -> Result<AppState, String> {
 
 async fn github_latest_release(repo: &str) -> Result<GitHubRelease, String> {
     let endpoint = format!("https://api.github.com/repos/{repo}/releases/latest");
-    let client = reqwest::Client::builder()
-        .build()
-        .map_err(|e| e.to_string())?;
+    let client = reqwest::Client::builder().build().map_err(|e| e.to_string())?;
     let response = client
         .get(endpoint)
-        .header(
-            USER_AGENT,
-            format!("Alya-Companion/{}", env!("CARGO_PKG_VERSION")),
-        )
+        .header(USER_AGENT, format!("Alya-Companion/{}", env!("CARGO_PKG_VERSION")))
         .header(ACCEPT, "application/vnd.github+json")
         .send()
         .await
         .map_err(|e| format!("GitHub inaccessible: {e}"))?;
     if !response.status().is_success() {
-        return Err(format!(
-            "GitHub a répondu avec le statut {}",
-            response.status()
-        ));
+        return Err(format!("GitHub a rÃƒÂ©pondu avec le statut {}", response.status()));
     }
     response
         .json()
         .await
-        .map_err(|e| format!("Réponse GitHub invalide: {e}"))
+        .map_err(|e| format!("RÃƒÂ©ponse GitHub invalide: {e}"))
 }
 
 async fn github_latest_companion_release() -> Result<GitHubRelease, String> {
-    let endpoint =
-        format!("https://api.github.com/repos/{ALYA_COMPANION_REPO}/releases?per_page=20");
-    let client = reqwest::Client::builder()
-        .build()
-        .map_err(|e| e.to_string())?;
+    let endpoint = format!("https://api.github.com/repos/{ALYA_COMPANION_REPO}/releases?per_page=20");
+    let client = reqwest::Client::builder().build().map_err(|e| e.to_string())?;
     let response = client
         .get(endpoint)
-        .header(
-            USER_AGENT,
-            format!("Alya-Companion/{}", env!("CARGO_PKG_VERSION")),
-        )
+        .header(USER_AGENT, format!("Alya-Companion/{}", env!("CARGO_PKG_VERSION")))
         .header(ACCEPT, "application/vnd.github+json")
         .send()
         .await
         .map_err(|e| format!("GitHub inaccessible: {e}"))?;
     if !response.status().is_success() {
-        return Err(format!(
-            "GitHub a répondu avec le statut {}",
-            response.status()
-        ));
+        return Err(format!("GitHub a rÃƒÂ©pondu avec le statut {}", response.status()));
     }
     let releases: Vec<GitHubRelease> = response
         .json()
         .await
-        .map_err(|e| format!("Réponse GitHub invalide: {e}"))?;
+        .map_err(|e| format!("RÃƒÂ©ponse GitHub invalide: {e}"))?;
 
     let current_is_prerelease = semver_version(env!("CARGO_PKG_VERSION"))
         .map(|version| !version.pre.is_empty())
@@ -490,12 +450,12 @@ async fn github_latest_companion_release() -> Result<GitHubRelease, String> {
     releases
         .into_iter()
         .filter(|release| !release.draft && (current_is_prerelease || !release.prerelease))
-        .max_by(
-            |a, b| match (semver_version(&a.tag_name), semver_version(&b.tag_name)) {
+        .max_by(|a, b| {
+            match (semver_version(&a.tag_name), semver_version(&b.tag_name)) {
                 (Some(a), Some(b)) => a.cmp(&b),
                 _ => a.tag_name.cmp(&b.tag_name),
-            },
-        )
+            }
+        })
         .ok_or_else(|| "Aucune release Alya Companion disponible sur GitHub".to_string())
 }
 
@@ -506,12 +466,7 @@ async fn latest_release() -> Result<(GitHubRelease, GitHubAsset), String> {
         .iter()
         .find(|a| a.name == ALYARCHETYPE_ASSET)
         .cloned()
-        .ok_or_else(|| {
-            format!(
-                "La release {} ne contient pas {ALYARCHETYPE_ASSET}.",
-                release.tag_name
-            )
-        })?;
+        .ok_or_else(|| format!("La release {} ne contient pas {ALYARCHETYPE_ASSET}.", release.tag_name))?;
     Ok((release, asset))
 }
 
@@ -564,40 +519,27 @@ async fn update_theme(app: AppHandle) -> Result<String, String> {
     let (release, asset) = latest_release().await?;
     let remote = normalize_version(&release.tag_name);
 
-    if target.is_file() {
-        let local = read_zip_version(&target)?;
-        if !version_is_newer(&remote, &local) {
-            return Ok(format!("AlyArchetype {local} est déjà à jour."));
-        }
-    }
-
-    let client = reqwest::Client::builder()
-        .build()
-        .map_err(|e| e.to_string())?;
+    let client = reqwest::Client::builder().build().map_err(|e| e.to_string())?;
     let response = client
         .get(&asset.browser_download_url)
-        .header(
-            USER_AGENT,
-            format!("Alya-Companion/{}", env!("CARGO_PKG_VERSION")),
-        )
+        .header(USER_AGENT, format!("Alya-Companion/{}", env!("CARGO_PKG_VERSION")))
         .header(ACCEPT, "application/octet-stream")
         .send()
         .await
-        .map_err(|e| format!("Téléchargement impossible: {e}"))?;
+        .map_err(|e| format!("TÃƒÂ©lÃƒÂ©chargement impossible: {e}"))?;
     if !response.status().is_success() {
-        return Err(format!("Téléchargement refusé: {}", response.status()));
+        return Err(format!("TÃƒÂ©lÃƒÂ©chargement refusÃƒÂ©: {}", response.status()));
     }
     let bytes = response.bytes().await.map_err(|e| e.to_string())?;
 
     let temp = tempdir().map_err(|e| e.to_string())?;
     let downloaded = temp.path().join(ALYARCHETYPE_ASSET);
-    fs::write(&downloaded, &bytes)
-        .map_err(|e| format!("Impossible d'écrire le téléchargement temporaire: {e}"))?;
+    fs::write(&downloaded, &bytes).map_err(|e| format!("Impossible d'ÃƒÂ©crire le tÃƒÂ©lÃƒÂ©chargement temporaire: {e}"))?;
 
     let downloaded_version = validate_theme_zip(&downloaded)?;
     if normalize_version(&downloaded_version) != remote {
         return Err(format!(
-            "Version du ZIP ({}) différente de la release ({}).",
+            "Version du ZIP ({}) diffÃƒÂ©rente de la release ({}).",
             normalize_version(&downloaded_version),
             remote
         ));
@@ -611,21 +553,17 @@ async fn update_theme(app: AppHandle) -> Result<String, String> {
             }
             let name = entry.file_name().to_string_lossy().to_string();
             if name.starts_with("AlyArchetype.backup") && name.ends_with(".zip") {
-                fs::remove_file(entry.path())
-                    .map_err(|e| format!("Impossible de supprimer l'ancien backup: {e}"))?;
+                fs::remove_file(entry.path()).map_err(|e| format!("Impossible de supprimer l'ancien backup: {e}"))?;
             }
         }
-        fs::copy(&target, &backup)
-            .map_err(|e| format!("Sauvegarde AlyArchetype impossible: {e}"))?;
+        fs::copy(&target, &backup).map_err(|e| format!("Sauvegarde AlyArchetype impossible: {e}"))?;
     }
 
     let staged = mods.join("AlyArchetype.update.tmp");
     if staged.exists() {
-        fs::remove_file(&staged)
-            .map_err(|e| format!("Impossible de nettoyer l'ancien fichier temporaire: {e}"))?;
+        fs::remove_file(&staged).map_err(|e| format!("Impossible de nettoyer l'ancien fichier temporaire: {e}"))?;
     }
-    fs::copy(&downloaded, &staged)
-        .map_err(|e| format!("Préparation de la mise à jour impossible: {e}"))?;
+    fs::copy(&downloaded, &staged).map_err(|e| format!("PrÃƒÂ©paration de la mise ÃƒÂ  jour impossible: {e}"))?;
 
     if target.exists() {
         if let Err(e) = fs::remove_file(&target) {
@@ -639,13 +577,10 @@ async fn update_theme(app: AppHandle) -> Result<String, String> {
         if backup.is_file() {
             let _ = fs::copy(&backup, &target);
         }
-        return Err(format!("Installation échouée, rollback tenté: {e}"));
+        return Err(format!("Installation ÃƒÂ©chouÃƒÂ©e, rollback tentÃƒÂ©: {e}"));
     }
 
-    Ok(format!(
-        "AlyArchetype {remote} installé depuis {}",
-        asset.name
-    ))
+    Ok(format!("AlyArchetype {remote} installÃƒÂ© depuis {}", asset.name))
 }
 
 #[tauri::command]
@@ -665,20 +600,18 @@ fn restore_latest_theme_backup(app: AppHandle) -> Result<String, String> {
     if staged.exists() {
         fs::remove_file(&staged).map_err(|e| e.to_string())?;
     }
-    fs::copy(&backup, &staged)
-        .map_err(|e| format!("Préparation de la restauration impossible: {e}"))?;
+    fs::copy(&backup, &staged).map_err(|e| format!("PrÃƒÂ©paration de la restauration impossible: {e}"))?;
 
     if target.exists() {
-        fs::remove_file(&target)
-            .map_err(|e| format!("Impossible de remplacer la version installée: {e}"))?;
+        fs::remove_file(&target).map_err(|e| format!("Impossible de remplacer la version installÃƒÂ©e: {e}"))?;
     }
     fs::rename(&staged, &target).map_err(|e| format!("Restauration impossible: {e}"))?;
 
-    Ok(format!("Backup restauré : {}", backup.display()))
+    Ok(format!("Backup restaurÃƒÂ© : {}", backup.display()))
 }
 
 fn surf_resources_dir(app: &AppHandle) -> Result<PathBuf, String> {
-    // En build installé, Tauri copie les resources dans resource_dir().
+    // En build installÃƒÂ©, Tauri copie les resources dans resource_dir().
     let bundled = app
         .path()
         .resource_dir()
@@ -696,16 +629,16 @@ fn surf_resources_dir(app: &AppHandle) -> Result<PathBuf, String> {
         return Ok(dev);
     }
 
-    Err("Les ressources Surf intégrées à Alya Companion sont introuvables.".into())
+    Err("Les ressources Surf intÃƒÂ©grÃƒÂ©es ÃƒÂ  Alya Companion sont introuvables.".into())
 }
 
 fn load_builtin_surf_manifest(app: &AppHandle) -> Result<(PatchManifest, PathBuf), String> {
     let dir = surf_resources_dir(app)?;
     let manifest_path = dir.join(BUILTIN_SURF_MANIFEST);
     let data = fs::read_to_string(&manifest_path)
-        .map_err(|e| format!("Manifest Surf intégré illisible: {e}"))?;
-    let manifest: PatchManifest =
-        serde_json::from_str(&data).map_err(|e| format!("Manifest Surf intégré invalide: {e}"))?;
+        .map_err(|e| format!("Manifest Surf intÃƒÂ©grÃƒÂ© illisible: {e}"))?;
+    let manifest: PatchManifest = serde_json::from_str(&data)
+        .map_err(|e| format!("Manifest Surf intÃƒÂ©grÃƒÂ© invalide: {e}"))?;
     Ok((manifest, dir))
 }
 
@@ -728,16 +661,13 @@ async fn apply_surf_patch(app: AppHandle, patch_id: String) -> Result<SurfState,
         .ok_or_else(|| "Patch Surf introuvable".to_string())?;
     let patch_path = surf_dir.join(&patch.patch_file);
     if !patch_path.is_file() {
-        return Err(format!(
-            "Fichier patch intégré introuvable: {}",
-            patch_path.display()
-        ));
+        return Err(format!("Fichier patch intÃƒÂ©grÃƒÂ© introuvable: {}", patch_path.display()));
     }
     if let Some(expected) = normalized_hash(&patch.patch_sha256) {
         let actual = sha256_file(&patch_path)?;
         if actual != expected {
             return Err(format!(
-                "Le patch Surf intégré est corrompu.\nAttendu: {expected}\nActuel:  {actual}"
+                "Le patch Surf intÃƒÂ©grÃƒÂ© est corrompu.\nAttendu: {expected}\nActuel:  {actual}"
             ));
         }
     }
@@ -763,15 +693,8 @@ async fn apply_surf_patch(app: AppHandle, patch_id: String) -> Result<SurfState,
             }
             let root = config_dir(&app)?.join("backups").join("rom");
             fs::create_dir_all(&root).map_err(|e| e.to_string())?;
-            let filename = rom
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("rom.nds");
-            let backup = root.join(format!(
-                "original-{}-{}",
-                &current_hash[..16],
-                safe_filename(filename)
-            ));
+            let filename = rom.file_name().and_then(|n| n.to_str()).unwrap_or("rom.nds");
+            let backup = root.join(format!("original-{}-{}", &current_hash[..16], safe_filename(filename)));
             if !backup.exists() {
                 fs::copy(&rom, &backup).map_err(|e| format!("Backup ROM impossible: {e}"))?;
             }
@@ -801,20 +724,17 @@ async fn apply_surf_patch(app: AppHandle, patch_id: String) -> Result<SurfState,
         .arg(&output)
         .output()
         .await
-        .map_err(|e| format!("Impossible d'exécuter xdelta3 intégré: {e}"))?;
+        .map_err(|e| format!("Impossible d'exÃƒÂ©cuter xdelta3 intÃƒÂ©grÃƒÂ©: {e}"))?;
     if !result.status.success() {
-        return Err(format!(
-            "xdelta3 a échoué:\n{}",
-            String::from_utf8_lossy(&result.stderr)
-        ));
+        return Err(format!("xdelta3 a ÃƒÂ©chouÃƒÂ©:\n{}", String::from_utf8_lossy(&result.stderr)));
     }
     if !output.is_file() {
-        return Err("xdelta3 n'a pas produit de ROM patchée".into());
+        return Err("xdelta3 n'a pas produit de ROM patchÃƒÂ©e".into());
     }
     let output_hash = sha256_file(&output)?;
     if let Some(expected) = normalized_hash(&patch.expected_output_sha256) {
         if output_hash != expected {
-            return Err(format!("Le hash de la ROM générée est inattendu.\nAttendu: {expected}\nProduit: {output_hash}"));
+            return Err(format!("Le hash de la ROM gÃƒÂ©nÃƒÂ©rÃƒÂ©e est inattendu.\nAttendu: {expected}\nProduit: {output_hash}"));
         }
     }
     fs::copy(&output, &rom).map_err(|e| format!("Impossible de remplacer la ROM: {e}"))?;
@@ -834,7 +754,7 @@ fn restore_original_rom(app: AppHandle) -> Result<SurfState, String> {
     let mut state = load_surf_state(&app)?;
     let rom_identity = rom.to_string_lossy().into_owned();
     if state.managed_rom_path.as_deref() != Some(rom_identity.as_str()) {
-        return Err("Le backup enregistré appartient à une autre ROM configurée".into());
+        return Err("Le backup enregistrÃƒÂ© appartient ÃƒÂ  une autre ROM configurÃƒÂ©e".into());
     }
     let backup = state
         .original_backup_path
@@ -854,31 +774,19 @@ fn embedded_webview_info(app: &AppHandle, kind: &str) -> Result<(&'static str, U
     match kind {
         "vanity" => {
             let settings = load_settings(app)?;
-            let url = Url::parse(settings.vanity_url.trim())
-                .map_err(|_| "URL Vanity invalide".to_string())?;
+            let url = Url::parse(settings.vanity_url.trim()).map_err(|_| "URL Vanity invalide".to_string())?;
             if url.scheme() != "https" && url.scheme() != "http" {
                 return Err("L'URL Vanity doit utiliser http ou https".into());
             }
             Ok((VANITY_WEBVIEW_LABEL, url))
         }
-        "shinyboard" => Ok((
-            SHINYBOARD_WEBVIEW_LABEL,
-            Url::parse(SHINYBOARD_URL).map_err(|e| e.to_string())?,
-        )),
-        "forum" => Ok((
-            FORUM_WEBVIEW_LABEL,
-            Url::parse(FORUM_URL).map_err(|e| e.to_string())?,
-        )),
-        _ => Err("WebView intégré inconnu".into()),
+        "shinyboard" => Ok((SHINYBOARD_WEBVIEW_LABEL, Url::parse(SHINYBOARD_URL).map_err(|e| e.to_string())?)),
+        "forum" => Ok((FORUM_WEBVIEW_LABEL, Url::parse(FORUM_URL).map_err(|e| e.to_string())?)),
+        _ => Err("WebView intÃƒÂ©grÃƒÂ© inconnu".into()),
     }
 }
 
-fn validate_embedded_bounds(
-    x: f64,
-    y: f64,
-    width: f64,
-    height: f64,
-) -> Result<(LogicalPosition<f64>, LogicalSize<f64>), String> {
+fn validate_embedded_bounds(x: f64, y: f64, width: f64, height: f64) -> Result<(LogicalPosition<f64>, LogicalSize<f64>), String> {
     if !x.is_finite() || !y.is_finite() || !width.is_finite() || !height.is_finite() {
         return Err("Dimensions WebView invalides".into());
     }
@@ -892,11 +800,7 @@ fn validate_embedded_bounds(
 }
 
 fn embedded_labels() -> [&'static str; 3] {
-    [
-        VANITY_WEBVIEW_LABEL,
-        SHINYBOARD_WEBVIEW_LABEL,
-        FORUM_WEBVIEW_LABEL,
-    ]
+    [VANITY_WEBVIEW_LABEL, SHINYBOARD_WEBVIEW_LABEL, FORUM_WEBVIEW_LABEL]
 }
 
 fn hide_other_embedded_webviews(app: &AppHandle, keep: Option<&str>) -> Result<(), String> {
@@ -912,14 +816,7 @@ fn hide_other_embedded_webviews(app: &AppHandle, keep: Option<&str>) -> Result<(
 }
 
 #[tauri::command]
-async fn show_embedded_webview(
-    app: AppHandle,
-    kind: String,
-    x: f64,
-    y: f64,
-    width: f64,
-    height: f64,
-) -> Result<(), String> {
+async fn show_embedded_webview(app: AppHandle, kind: String, x: f64, y: f64, width: f64, height: f64) -> Result<(), String> {
     let (label, url) = embedded_webview_info(&app, &kind)?;
     let (position, size) = validate_embedded_bounds(x, y, width, height)?;
     hide_other_embedded_webviews(&app, Some(label))?;
@@ -937,18 +834,14 @@ async fn show_embedded_webview(
 
     let main_webview = app
         .get_webview("main")
-        .or_else(|| {
-            app.webviews()
-                .into_values()
-                .find(|webview| !embedded_labels().contains(&webview.label()))
-        })
-        .ok_or_else(|| "Fenêtre principale Alya Companion introuvable".to_string())?;
+        .or_else(|| app.webviews().into_values().find(|webview| !embedded_labels().contains(&webview.label())))
+        .ok_or_else(|| "FenÃƒÂªtre principale Alya Companion introuvable".to_string())?;
     let window = main_webview.window();
 
     let builder = WebviewBuilder::new(label, WebviewUrl::External(url));
     window
         .add_child(builder, position, size)
-        .map_err(|e| format!("Impossible d'intégrer {kind} dans Alya Companion: {e}"))?;
+        .map_err(|e| format!("Impossible d'intÃƒÂ©grer {kind} dans Alya Companion: {e}"))?;
     Ok(())
 }
 
@@ -977,14 +870,8 @@ fn companion_update_status_from_release(release: &GitHubRelease) -> CompanionUpd
         changelog: release.body.clone(),
         published_at: release.published_at.clone(),
         update_available: companion_version_is_newer(&latest, &current),
-        installer_available: release
-            .assets
-            .iter()
-            .any(|a| a.name == ALYA_COMPANION_INSTALLER),
-        checksum_available: release
-            .assets
-            .iter()
-            .any(|a| a.name == ALYA_COMPANION_INSTALLER_SHA256),
+        installer_available: release.assets.iter().any(|a| a.name == ALYA_COMPANION_INSTALLER),
+        checksum_available: release.assets.iter().any(|a| a.name == ALYA_COMPANION_INSTALLER_SHA256),
         repository: ALYA_COMPANION_REPO.into(),
         development_build: cfg!(debug_assertions),
     }
@@ -1014,10 +901,7 @@ async fn install_companion_update(app: AppHandle) -> Result<String, String> {
     let release = github_latest_companion_release().await?;
     let status = companion_update_status_from_release(&release);
     if !status.update_available {
-        return Ok(format!(
-            "Alya Companion {} est déjà à jour.",
-            status.current_version
-        ));
+        return Ok(format!("Alya Companion {} est dÃƒÂ©jÃƒÂ  ÃƒÂ  jour.", status.current_version));
     }
 
     let installer = release
@@ -1025,27 +909,15 @@ async fn install_companion_update(app: AppHandle) -> Result<String, String> {
         .iter()
         .find(|a| a.name == ALYA_COMPANION_INSTALLER)
         .cloned()
-        .ok_or_else(|| {
-            format!(
-                "La release {} ne contient pas {ALYA_COMPANION_INSTALLER}.",
-                release.tag_name
-            )
-        })?;
+        .ok_or_else(|| format!("La release {} ne contient pas {ALYA_COMPANION_INSTALLER}.", release.tag_name))?;
     let checksum = release
         .assets
         .iter()
         .find(|a| a.name == ALYA_COMPANION_INSTALLER_SHA256)
         .cloned()
-        .ok_or_else(|| {
-            format!(
-                "La release {} ne contient pas {ALYA_COMPANION_INSTALLER_SHA256}.",
-                release.tag_name
-            )
-        })?;
+        .ok_or_else(|| format!("La release {} ne contient pas {ALYA_COMPANION_INSTALLER_SHA256}.", release.tag_name))?;
 
-    let client = reqwest::Client::builder()
-        .build()
-        .map_err(|e| e.to_string())?;
+    let client = reqwest::Client::builder().build().map_err(|e| e.to_string())?;
     let user_agent = format!("Alya-Companion/{}", env!("CARGO_PKG_VERSION"));
 
     let checksum_response = client
@@ -1054,18 +926,12 @@ async fn install_companion_update(app: AppHandle) -> Result<String, String> {
         .header(ACCEPT, "application/octet-stream")
         .send()
         .await
-        .map_err(|e| format!("Téléchargement du SHA-256 impossible: {e}"))?;
+        .map_err(|e| format!("TÃƒÂ©lÃƒÂ©chargement du SHA-256 impossible: {e}"))?;
     if !checksum_response.status().is_success() {
-        return Err(format!(
-            "Téléchargement du SHA-256 refusé: {}",
-            checksum_response.status()
-        ));
+        return Err(format!("TÃƒÂ©lÃƒÂ©chargement du SHA-256 refusÃƒÂ©: {}", checksum_response.status()));
     }
     let expected_hash = parse_sha256_file(
-        &checksum_response
-            .text()
-            .await
-            .map_err(|e| format!("Lecture du SHA-256 impossible: {e}"))?,
+        &checksum_response.text().await.map_err(|e| format!("Lecture du SHA-256 impossible: {e}"))?,
     )?;
 
     let installer_response = client
@@ -1074,43 +940,35 @@ async fn install_companion_update(app: AppHandle) -> Result<String, String> {
         .header(ACCEPT, "application/octet-stream")
         .send()
         .await
-        .map_err(|e| format!("Téléchargement de la mise à jour impossible: {e}"))?;
+        .map_err(|e| format!("TÃƒÂ©lÃƒÂ©chargement de la mise ÃƒÂ  jour impossible: {e}"))?;
     if !installer_response.status().is_success() {
-        return Err(format!(
-            "Téléchargement de la mise à jour refusé: {}",
-            installer_response.status()
-        ));
+        return Err(format!("TÃƒÂ©lÃƒÂ©chargement de la mise ÃƒÂ  jour refusÃƒÂ©: {}", installer_response.status()));
     }
-    let bytes = installer_response
-        .bytes()
-        .await
-        .map_err(|e| format!("Lecture de la mise à jour impossible: {e}"))?;
+    let bytes = installer_response.bytes().await.map_err(|e| format!("Lecture de la mise ÃƒÂ  jour impossible: {e}"))?;
 
     let update_dir = app
         .path()
         .app_cache_dir()
         .map_err(|e| e.to_string())?
         .join("updates");
-    fs::create_dir_all(&update_dir)
-        .map_err(|e| format!("Impossible de créer le cache de mise à jour: {e}"))?;
+    fs::create_dir_all(&update_dir).map_err(|e| format!("Impossible de crÃƒÂ©er le cache de mise ÃƒÂ  jour: {e}"))?;
     let installer_path = update_dir.join(ALYA_COMPANION_INSTALLER);
-    fs::write(&installer_path, &bytes)
-        .map_err(|e| format!("Impossible d'écrire l'installateur: {e}"))?;
+    fs::write(&installer_path, &bytes).map_err(|e| format!("Impossible d'ÃƒÂ©crire l'installateur: {e}"))?;
 
     let actual_hash = sha256_file(&installer_path)?;
     if actual_hash != expected_hash {
         let _ = fs::remove_file(&installer_path);
         return Err(format!(
-            "SHA-256 de la mise à jour invalide. Attendu {expected_hash}, reçu {actual_hash}."
+            "SHA-256 de la mise ÃƒÂ  jour invalide. Attendu {expected_hash}, reÃƒÂ§u {actual_hash}."
         ));
     }
 
     Command::new(&installer_path)
         .spawn()
-        .map_err(|e| format!("Impossible de lancer l'installateur de mise à jour: {e}"))?;
+        .map_err(|e| format!("Impossible de lancer l'installateur de mise ÃƒÂ  jour: {e}"))?;
 
     app.exit(0);
-    Ok("Installateur de mise à jour lancé.".into())
+    Ok("Installateur de mise ÃƒÂ  jour lancÃƒÂ©.".into())
 }
 
 fn require_file(value: &str, label: &str) -> Result<PathBuf, String> {
@@ -1123,16 +981,13 @@ fn require_file(value: &str, label: &str) -> Result<PathBuf, String> {
 
 fn require_file_path(value: &str, label: &str) -> Result<PathBuf, String> {
     if value.trim().is_empty() {
-        return Err(format!("{label} non configuré"));
+        return Err(format!("{label} non configurÃƒÂ©"));
     }
     Ok(PathBuf::from(value))
 }
 
 fn normalized_hash(value: &Option<String>) -> Option<String> {
-    value
-        .as_ref()
-        .map(|s| s.trim().to_ascii_lowercase())
-        .filter(|s| !s.is_empty())
+    value.as_ref().map(|s| s.trim().to_ascii_lowercase()).filter(|s| !s.is_empty())
 }
 
 fn sha256_file(path: &Path) -> Result<String, String> {
@@ -1152,18 +1007,15 @@ fn sha256_file(path: &Path) -> Result<String, String> {
 fn safe_filename(value: &str) -> String {
     value
         .chars()
-        .map(|c| {
-            if c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.') {
-                c
-            } else {
-                '_'
-            }
-        })
+        .map(|c| if c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.') { c } else { '_' })
         .collect()
 }
 
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|_app, args, _cwd| { let has_auth_callback = args.iter().any(|arg| arg.starts_with("alya-companion://auth/callback")); println!("ALYA_DEEPLINK_RECEIVED={has_auth_callback}"); }))
+        .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())

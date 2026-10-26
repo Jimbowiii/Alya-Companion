@@ -1,7 +1,7 @@
 {
   "name": "alya-companion",
   "private": true,
-  "version": "1.0.0-rc.4",
+  "version": "1.0.0-rc.5",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,8 +12,11 @@
     "prepare:xdelta": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/prepare-xdelta.ps1"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.118.0",
     "@tauri-apps/api": "^2.12.3",
+    "@tauri-apps/plugin-deep-link": "^2.6.2",
     "@tauri-apps/plugin-dialog": "2.8.3",
+    "@tauri-apps/plugin-opener": "^2.7.2",
     "@tauri-apps/plugin-updater": "^2.14.0",
     "lucide-react": "^0.468.0",
     "react": "^19.1.1",
