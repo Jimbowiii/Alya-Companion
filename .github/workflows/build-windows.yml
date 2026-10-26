@@ -40,7 +40,7 @@ jobs:
           }
 
           $version = $env:RELEASE_TAG -replace '^v', ''
-          $content = Get-Content "CHANGELOG.md" -Raw
+          $content = Get-Content "CHANGELOG.md" -Raw -Encoding utf8 -Encoding utf8
 
           $escapedVersion = [regex]::Escape($version)
 
@@ -73,6 +73,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Alya Companion ${{ github.ref_name }}"
@@ -112,7 +114,7 @@ jobs:
 
             gh release create updater-metadata `
               --title "Alya Companion Updater Metadata" `
-              --notes "Metadata utilisé par le système de mise à jour intégré d'Alya Companion." `
+              --notes "Metadata utilisÃ© par le systÃ¨me de mise Ã  jour intÃ©grÃ© d'Alya Companion." `
               --prerelease
           }
 
@@ -158,20 +160,20 @@ jobs:
           $changelog = $env:CHANGELOG_BODY
 
           if ([string]::IsNullOrWhiteSpace($changelog)) {
-            $changelog = "Aucun détail fourni pour cette version."
+            $changelog = "Aucun dÃ©tail fourni pour cette version."
           }
 
           $maxChangelogLength = 1600
 
           if ($changelog.Length -gt $maxChangelogLength) {
             $changelog = $changelog.Substring(0, $maxChangelogLength)
-            $changelog += "`n`n… **Changelog tronqué sur Discord.** Consulte la GitHub Release pour lire la suite."
+            $changelog += "`n`nâ€¦ **Changelog tronquÃ© sur Discord.** Consulte la GitHub Release pour lire la suite."
           }
 
           $description = @"
-          **$env:RELEASE_TAG** est maintenant disponible ! 🌺
+          **$env:RELEASE_TAG** est maintenant disponible ! ðŸŒº
 
-          ### 📋 Changelog
+          ### ðŸ“‹ Changelog
 
           $changelog
           "@
@@ -180,22 +182,22 @@ jobs:
             username = "Alya Companion"
             embeds = @(
               @{
-                title = "🌺 Nouvelle version d'Alya Companion disponible !"
+                title = "ðŸŒº Nouvelle version d'Alya Companion disponible !"
                 description = $description
                 fields = @(
                   @{
-                    name = "📥 Téléchargement"
-                    value = "[Télécharger Alya Companion]($downloadUrl)"
+                    name = "ðŸ“¥ TÃ©lÃ©chargement"
+                    value = "[TÃ©lÃ©charger Alya Companion]($downloadUrl)"
                     inline = $true
                   },
                   @{
-                    name = "🔗 GitHub Release"
-                    value = "[Voir la release complète]($releaseUrl)"
+                    name = "ðŸ”— GitHub Release"
+                    value = "[Voir la release complÃ¨te]($releaseUrl)"
                     inline = $true
                   }
                 )
                 footer = @{
-                  text = "Alya Companion • PokeMMO Companion"
+                  text = "Alya Companion â€¢ PokeMMO Companion"
                 }
               }
             )

@@ -1,77 +1,97 @@
 # Changelog
 
+## [1.0.0-rc.6] - 2026-10-26
+
+### 🐛 Correctifs de publication
+
+- Correction de la configuration Supabase dans les builds GitHub Actions.
+- `VITE_SUPABASE_URL` et `VITE_SUPABASE_ANON_KEY` sont maintenant injectées pendant la compilation Vite/Tauri.
+- Correction de l'écran **Configuration Supabase requise** qui pouvait apparaître dans la version distribuée alors que Supabase fonctionnait en développement local.
+- Correction de l'encodage UTF-8 du changelog utilisé par les GitHub Releases et les annonces Discord.
+- Les accents, apostrophes et emojis du changelog sont maintenant conservés correctement.
+
+### 🔐 Alya Cloud
+
+- Aucun changement de permissions ou de sécurité Supabase/RLS.
+- La RC6 reprend les fonctionnalités Alya Cloud de la RC5 avec une configuration de production correcte.
+
 ## [1.0.0-rc.5] - 2026-10-26
 
-Cette RC5 introduit **Alya Cloud**, le nouveau systÃ¨me de comptes dâ€™Alya Companion, ainsi quâ€™une importante Ã©volution de la gestion des utilisateurs, de la sÃ©curitÃ©, de la sidebar et de la personnalisation visuelle.
+Cette RC5 introduit **Alya Cloud**, le système de comptes d'Alya Companion, ainsi qu'une importante évolution de la gestion des utilisateurs, de la sécurité, de la sidebar et de la personnalisation visuelle.
 
-### â˜ï¸ Alya Cloud
+### ☁️ Alya Cloud
 
-- Ajout dâ€™un systÃ¨me de comptes Alya basÃ© sur **Supabase**.
+- Ajout d'un système de comptes Alya basé sur **Supabase**.
 - Connexion et inscription par email.
-- Ajout de la confirmation dâ€™adresse email.
-- La confirmation email fonctionne dÃ©sormais aussi depuis un tÃ©lÃ©phone et ne dÃ©pend plus directement du lancement dâ€™Alya via deep-link.
+- Ajout de la confirmation d'adresse email.
+- La confirmation email fonctionne également depuis un téléphone et ne dépend plus directement du lancement d'Alya via deep-link.
 - Ajout de la connexion avec **Discord**.
 - Ajout du callback OAuth `alya-companion://auth/callback`.
-- IntÃ©gration robuste des deep-links Tauri, y compris lorsque Alya est dÃ©jÃ  ouvert.
-- Ajout de la gestion single-instance pour transmettre les callbacks Ã  lâ€™instance Alya existante.
-- Ajout dâ€™une carte de profil **ALYA CLOUD** dans la partie basse de la sidebar.
-- Affichage du nom de lâ€™utilisateur connectÃ© et de son rÃ´le.
+- Intégration robuste des deep-links Tauri, y compris lorsque Alya est déjà ouvert.
+- Ajout de la gestion single-instance pour transmettre les callbacks à l'instance Alya existante.
+- Ajout d'une carte de profil **ALYA CLOUD** dans la partie basse de la sidebar.
+- Affichage du nom de l'utilisateur connecté et de son rôle.
 
-### ðŸ›¡ï¸ RÃ´les et permissions
+### 🛡️ Rôles et permissions
 
-Ajout des rÃ´les :
+Ajout des rôles :
 
 - `user`
 - `Admin`
 - `DEV`
 
-Les rÃ´les sont stockÃ©s dans `public.profiles.role` et protÃ©gÃ©s cÃ´tÃ© Supabase.
+Les rôles sont stockés dans `public.profiles.role` et protégés côté Supabase.
 
 Badges :
+
 - `user` : violet
 - `Admin` : rouge
-- `DEV` : dorÃ©
+- `DEV` : doré
 
 #### user
-- Utilisation normale dâ€™Alya.
+
+- Utilisation normale d'Alya.
 - Gestion de sa propre feuille Shiny-War.
-- Aucun accÃ¨s aux feuilles Shiny-War des autres utilisateurs.
-- Aucun accÃ¨s aux outils Admin/DEV.
+- Aucun accès aux feuilles Shiny-War des autres utilisateurs.
+- Aucun accès aux outils Admin/DEV.
 
 #### Admin
-- Ajout de **PrÃ©pa Alya**.
+
+- Ajout de **Prépa Alya**.
 - Liste des utilisateurs Alya.
-- Consultation en lecture seule de la feuille Shiny-War dâ€™un autre utilisateur.
+- Consultation en lecture seule de la feuille Shiny-War d'un autre utilisateur.
 
 #### DEV
-- AccÃ¨s Ã  PrÃ©pa Alya.
+
+- Accès à Prépa Alya.
 - Ajout du panneau de gestion des utilisateurs.
-- Consultation du rÃ´le de chaque utilisateur.
-- Attribution sÃ©curisÃ©e des rÃ´les `user`, `Admin` et `DEV`.
+- Consultation du rôle de chaque utilisateur.
+- Attribution sécurisée des rôles `user`, `Admin` et `DEV`.
 
-Les changements de rÃ´le passent par une fonction PostgreSQL sÃ©curisÃ©e et ne reposent pas uniquement sur le frontend.
+Les changements de rôle passent par une fonction PostgreSQL sécurisée et ne reposent pas uniquement sur le frontend.
 
-### ðŸ” SÃ©curitÃ© et sessions
+### 🔐 Sécurité et sessions
 
 - Ajout et renforcement des politiques Supabase / RLS.
-- Validation cÃ´tÃ© serveur des permissions utilisateur, Admin et DEV.
-- Validation rÃ©elle de la session Supabase au dÃ©marrage.
-- VÃ©rification de lâ€™existence du compte et du profil associÃ©s Ã  la session.
-- Correction des **sessions fantÃ´mes** aprÃ¨s suppression dâ€™un utilisateur Supabase.
-- Une session locale invalide ne permet plus dâ€™ouvrir le Dashboard.
-- Utilisation de la clÃ© locale dâ€™authentification `alya-companion-auth`.
+- Validation côté serveur des permissions utilisateur, Admin et DEV.
+- Validation réelle de la session Supabase au démarrage.
+- Vérification de l'existence du compte et du profil associés à la session.
+- Correction des **sessions fantômes** après suppression d'un utilisateur Supabase.
+- Une session locale invalide ne permet plus d'ouvrir le Dashboard.
+- Utilisation de la clé locale d'authentification `alya-companion-auth`.
 
-### ðŸŽ¨ Personnalisation des fonds par onglet
+### 🎨 Personnalisation des fonds par onglet
 
-- Ajout dâ€™une icÃ´ne **crayon** dans lâ€™en-tÃªte des onglets principaux, sauf Dashboard.
-- SÃ©lecteur visuel permettant dâ€™utiliser les fonds prÃ©sents dans les assets Alya.
-- Chaque onglet mÃ©morise son propre fond.
-- Persistance des choix aprÃ¨s redÃ©marrage.
-- PossibilitÃ© de restaurer le fond par dÃ©faut.
-- Le fond animÃ© du Dashboard peut Ãªtre rÃ©utilisÃ© sur les autres onglets.
-- Gestion spÃ©cifique des WebViews Vanity, Shinyboard et Forum pendant lâ€™ouverture du sÃ©lecteur.
+- Ajout d'une icône **crayon** dans l'en-tête des onglets principaux, sauf Dashboard.
+- Sélecteur visuel permettant d'utiliser les fonds présents dans les assets Alya.
+- Chaque onglet mémorise son propre fond.
+- Persistance des choix après redémarrage.
+- Possibilité de restaurer le fond par défaut.
+- Le fond animé du Dashboard peut être réutilisé sur les autres onglets.
+- Gestion spécifique des WebViews Vanity, Shinyboard et Forum pendant l'ouverture du sélecteur.
 
 Onglets personnalisables :
+
 - AlyArchetype
 - Surf Manager
 - Shiny-War
@@ -80,77 +100,77 @@ Onglets personnalisables :
 - Forum
 - Vanity
 
-### ðŸ§­ Sidebar
+### 🧭 Sidebar
 
-- Refonte de la structure de la sidebar en trois zones : header, navigation scrollable et footer fixe.
+- Refonte de la sidebar en trois zones : header, navigation scrollable et footer fixe.
 - Le logo Alya reste fixe en haut.
-- Seule la liste des onglets dÃ©file.
-- Le bloc infÃ©rieur reste fixe.
-- Settings nâ€™est plus un onglet principal.
-- Ajout dâ€™une rangÃ©e dâ€™outils fixe dans le footer.
-- Pour un DEV : Personnalisation, Settings, PrÃ©pa Alya et Gestion utilisateurs tiennent sur une seule ligne.
-- PrÃ©pa Alya et Gestion DEV ne sont jamais affichÃ©s dans la navigation principale.
+- Seule la liste des onglets défile.
+- Le bloc inférieur reste fixe.
+- Settings n'est plus un onglet principal.
+- Ajout d'une rangée d'outils fixe dans le footer.
+- Pour un DEV : Personnalisation, Settings, Prépa Alya et Gestion utilisateurs tiennent sur une seule ligne.
+- Prépa Alya et Gestion DEV ne sont jamais affichés dans la navigation principale.
 - Conservation du bouton externe de collapse.
 
-### â†•ï¸ Scrollbar et fondu
+### ↕️ Scrollbar et fondu
 
-- Scrollbar affinÃ©e et harmonisÃ©e avec la couleur dâ€™accentuation Alya.
+- Scrollbar affinée et harmonisée avec la couleur d'accentuation Alya.
 - Track transparent.
-- Suppression du fond noir derriÃ¨re la scrollbar.
-- Ajout/conservation du glow nÃ©on.
+- Suppression du fond noir derrière la scrollbar.
+- Conservation du glow néon.
 - Correction de la hauteur et du positionnement vertical de la zone scrollable.
-- RÃ©duction de la zone de fondu Ã  environ la hauteur dâ€™un onglet.
+- Réduction de la zone de fondu à environ la hauteur d'un onglet.
 - Les onglets restent visibles plus longtemps et disparaissent juste avant le footer.
-- La largeur du fondu correspond dÃ©sormais Ã  lâ€™encart dâ€™un onglet actif, avec environ 1 px de dÃ©bord.
+- La largeur du fondu correspond à l'encart d'un onglet actif, avec environ 1 px de débord.
 - La zone de scrollbar est exclue du masque de fondu.
-- La scrollbar peut donc descendre sous la zone de disparition sans Ãªtre masquÃ©e.
-- Comportement adaptÃ© Ã©galement en sidebar collapsed.
+- La scrollbar peut descendre sous la zone de disparition sans être masquée.
+- Comportement adapté également en sidebar collapsed.
 
-### ðŸ› Corrections
+### 🐛 Corrections
 
 - Correction de la connexion Discord via deep-link.
-- Correction des callbacks OAuth reÃ§us lorsque le frontend nâ€™est pas encore prÃªt.
-- Correction du retour dâ€™authentification lorsque Alya est dÃ©jÃ  ouvert.
+- Correction des callbacks OAuth reçus lorsque le frontend n'est pas encore prêt.
+- Correction du retour d'authentification lorsque Alya est déjà ouvert.
 - Correction de la confirmation email depuis mobile.
 - Correction des sessions Supabase locales invalides.
-- Correction de lâ€™accÃ¨s au Dashboard aprÃ¨s suppression dâ€™un utilisateur.
-- Correction de plusieurs problÃ¨mes de sidebar Ã  faible hauteur de fenÃªtre.
-- Correction du footer pouvant Ãªtre recouvert par les onglets.
-- Correction dâ€™onglets restant visibles derriÃ¨re le footer.
+- Correction de l'accès au Dashboard après suppression d'un utilisateur.
+- Correction de plusieurs problèmes de sidebar à faible hauteur de fenêtre.
+- Correction du footer pouvant être recouvert par les onglets.
+- Correction d'onglets restant visibles derrière le footer.
 - Correction du fond noir de la scrollbar.
-- Correction de la scrollbar impactÃ©e par le masque de disparition.
-- Correction de lâ€™alignement des quatre outils DEV.
+- Correction de la scrollbar impactée par le masque de disparition.
+- Correction de l'alignement des quatre outils DEV.
 
-### ðŸ”§ Technique
+### 🔧 Technique
 
 - Ajout de `tauri-plugin-deep-link`.
 - Ajout de `tauri-plugin-opener`.
 - Ajout de `tauri-plugin-single-instance`.
 - Activation de la feature `deep-link` de `tauri-plugin-single-instance`.
-- IntÃ©gration de Supabase Auth, Database et des profils Alya.
-- Mise en place des politiques RLS nÃ©cessaires aux permissions Alya Cloud.
-- Mise en place dâ€™une fonction PostgreSQL sÃ©curisÃ©e pour les changements de rÃ´le.
-- AmÃ©lioration de la gestion des WebViews natives lors de lâ€™ouverture dâ€™overlays.
-- Persistance locale des fonds personnalisÃ©s par onglet.
+- Intégration de Supabase Auth, Database et des profils Alya.
+- Mise en place des politiques RLS nécessaires aux permissions Alya Cloud.
+- Mise en place d'une fonction PostgreSQL sécurisée pour les changements de rôle.
+- Amélioration de la gestion des WebViews natives lors de l'ouverture d'overlays.
+- Persistance locale des fonds personnalisés par onglet.
 
 ## [1.0.0-rc.4] - 2026-10-25
 
-### AjoutÃ©
+### Ajouté
 
-- Nouvel onglet **Shinyboard**, intÃ©grÃ© directement dans Alya Companion.
-- Nouvel onglet **Rotations** pour suivre les lÃ©gendaires fuyards de Kanto et Johto.
+- Nouvel onglet **Shinyboard**, intégré directement dans Alya Companion.
+- Nouvel onglet **Rotations** pour suivre les légendaires fuyards de Kanto et Johto.
 - Affichage de la rotation actuelle, de la prochaine rotation et de la rotation suivante en cache.
-- Compte Ã  rebours jusqu'au prochain reset mensuel des lÃ©gendaires.
-- Bouton **âœ¨ Shiny** dans l'onglet Rotations permettant de basculer tous les sprites animÃ©s entre leur version normale et shiny.
-- Nouvel onglet **Forum** intÃ©grant le forum officiel PokeMMO.
-- Nouveau panneau de personnalisation accessible depuis l'icÃ´ne clÃ© Ã  molette.
-- PossibilitÃ© d'afficher ou masquer les onglets de la barre latÃ©rale.
-- PossibilitÃ© de rÃ©organiser librement les onglets avec glisser-dÃ©poser ou boutons haut/bas.
-- PossibilitÃ© de modifier la couleur d'accentuation de l'application.
-- Nouveau bouton crayon sur le Dashboard permettant de choisir les modules affichÃ©s.
-- Nouveau logo Alya Companion utilisÃ© dans l'interface et les diffÃ©rents Ã©lÃ©ments visuels.
-- Nouveau systÃ¨me de mise Ã  jour signÃ© basÃ© sur l'updater officiel Tauri.
-- Nouveau systÃ¨me de changelog utilisÃ© automatiquement par les GitHub Releases et les annonces Discord.
+- Compte à rebours jusqu'au prochain reset mensuel des légendaires.
+- Bouton **✨ Shiny** dans l'onglet Rotations permettant de basculer les sprites animés entre leur version normale et shiny.
+- Nouvel onglet **Forum** intégrant le forum officiel PokeMMO.
+- Nouveau panneau de personnalisation accessible depuis l'icône clé à molette.
+- Possibilité d'afficher ou masquer les onglets de la barre latérale.
+- Possibilité de réorganiser librement les onglets avec glisser-déposer ou boutons haut/bas.
+- Possibilité de modifier la couleur d'accentuation de l'application.
+- Nouveau bouton crayon sur le Dashboard permettant de choisir les modules affichés.
+- Nouveau logo Alya Companion utilisé dans l'interface.
+- Nouveau système de mise à jour signé basé sur l'updater officiel Tauri.
+- Nouveau système de changelog utilisé automatiquement par les GitHub Releases et les annonces Discord.
 
 ### Surf Manager
 
@@ -159,31 +179,31 @@ Onglets personnalisables :
 - Ajout du patch **Lugia**.
 - Ajout du patch **Latias Shiny**.
 - Conservation des patchs **Togekiss Shiny**, **Kyogre Shiny** et **Primal Kyogre Shiny**.
-- Ajout de previews visuelles pour les PokÃ©mon disponibles dans le Surf Manager.
-- Previews recadrÃ©es et centrÃ©es pour un meilleur rendu dans les cartes.
-- Les futurs patchs dÃ©pourvus de preview utilisent automatiquement l'icÃ´ne Surf par dÃ©faut.
+- Ajout de previews visuelles pour les Pokémon disponibles dans le Surf Manager.
+- Previews recadrées et centrées pour un meilleur rendu dans les cartes.
+- Les futurs patchs sans preview utilisent automatiquement l'icône Surf par défaut.
 
-### AmÃ©liorÃ©
+### Amélioré
 
-- Le Dashboard est dÃ©sormais personnalisable.
-- L'ordre des onglets est sauvegardÃ© entre les sessions.
-- Les modules affichÃ©s sur le Dashboard sont sauvegardÃ©s entre les sessions.
-- La couleur d'accentuation personnalisÃ©e est conservÃ©e aprÃ¨s redÃ©marrage.
-- Les anciens fichiers de configuration restent compatibles avec les nouveaux paramÃ¨tres.
-- L'encart principal du Dashboard a Ã©tÃ© rendu plus compact.
-- AmÃ©lioration de la prÃ©sentation des cartes du Surf Manager.
-- AmÃ©lioration de la fiabilitÃ© de la rÃ©organisation des onglets sous Windows/WebView2.
-- Les rotations lÃ©gendaires sont calculÃ©es localement sans dÃ©pendre d'une API externe.
-- Le reset des rotations utilise l'heure UTC afin de rester correct malgrÃ© les changements d'heure.
-- Les futures mises Ã  jour Windows pourront Ãªtre installÃ©es par-dessus la version existante sans dÃ©sinstallation manuelle.
-- Les mises Ã  jour Alya Companion sont dÃ©sormais vÃ©rifiÃ©es par signature cryptographique avant installation.
-- Les GitHub Releases utilisent automatiquement le changelog correspondant Ã  la version publiÃ©e.
+- Le Dashboard est désormais personnalisable.
+- L'ordre des onglets est sauvegardé entre les sessions.
+- Les modules affichés sur le Dashboard sont sauvegardés entre les sessions.
+- La couleur d'accentuation personnalisée est conservée après redémarrage.
+- Les anciens fichiers de configuration restent compatibles avec les nouveaux paramètres.
+- L'encart principal du Dashboard a été rendu plus compact.
+- Amélioration de la présentation des cartes du Surf Manager.
+- Amélioration de la fiabilité de la réorganisation des onglets sous Windows/WebView2.
+- Les rotations légendaires sont calculées localement sans dépendre d'une API externe.
+- Le reset des rotations utilise l'heure UTC afin de rester correct malgré les changements d'heure.
+- Les futures mises à jour Windows peuvent être installées par-dessus la version existante sans désinstallation manuelle.
+- Les mises à jour Alya Companion sont vérifiées par signature cryptographique avant installation.
+- Les GitHub Releases utilisent automatiquement le changelog correspondant à la version publiée.
 - Les annonces Discord incluent automatiquement le changelog de la nouvelle version.
 
-### CorrigÃ©
+### Corrigé
 
-- Correction de la persistance des nouveaux paramÃ¨tres de personnalisation.
-- Correction du systÃ¨me de rÃ©organisation des onglets dans Tauri/WebView2.
-- Correction du centrage des previews PokÃ©mon dans le Surf Manager.
-- Correction de plusieurs problÃ¨mes de configuration liÃ©s Ã  l'intÃ©gration du nouvel updater Tauri.
-- Correction de la compatibilitÃ© entre les nouveaux paramÃ¨tres frontend et leur sauvegarde cÃ´tÃ© Rust.
+- Correction de la persistance des nouveaux paramètres de personnalisation.
+- Correction du système de réorganisation des onglets dans Tauri/WebView2.
+- Correction du centrage des previews Pokémon dans le Surf Manager.
+- Correction de plusieurs problèmes de configuration liés à l'intégration du nouvel updater Tauri.
+- Correction de la compatibilité entre les nouveaux paramètres frontend et leur sauvegarde côté Rust.
