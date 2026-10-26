@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.0-rc.8] - 2026-10-26
+
+### ðŸ› Correctif de publication
+
+- Correction de la syntaxe YAML du workflow GitHub Actions : le bloc `with:` de `tauri-action` est de nouveau correctement indentÃ©.
+- Conservation d'une seule lecture UTF-8 du changelog avec `-Encoding utf8`.
+- Injection de `VITE_SUPABASE_URL` et `VITE_SUPABASE_ANON_KEY` pendant le build de production.
+- Correction des textes du webhook Discord qui contenaient encore des caractÃ¨res mal encodÃ©s.
+- Envoi du payload Discord explicitement en UTF-8.
+- Aucun changement fonctionnel supplÃ©mentaire dans Alya Companion : cette version corrige le pipeline de publication.
+
 ## [1.0.0-rc.7] - 2026-10-26
 
 ### ðŸ› Correctif de publication
