@@ -45,7 +45,7 @@ dependencies = [
 
 [[package]]
 name = "alya-companion"
-version = "1.0.0-rc.8"
+version = "1.0.0-rc.9"
 dependencies = [
  "reqwest 0.12.28",
  "semver",
