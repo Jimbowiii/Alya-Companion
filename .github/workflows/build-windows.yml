@@ -36,59 +36,62 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
 
-          if (-not (Test-Path "CHANGELOG.md")) {
-            throw "CHANGELOG.md is missing."
-          }
-
           $version = $env:RELEASE_TAG -replace '^v', ''
-          $content = Get-Content "CHANGELOG.md" -Raw -Encoding utf8
-          $lines = $content -split "`r?`n"
-          $escapedVersion = [regex]::Escape($version)
+          $body = $null
 
-          # Formats acceptes :
-          #   ## [1.0.0-rc.10] - 2026-10-27
-          #   ## 1.0.0-rc.10 - 2026-10-27
-          #   ## [1.0.0-rc.10]
-          #   ## 1.0.0-rc.10
-          $headingPattern = "^\s*##\s+\[?$escapedVersion\]?(?:\s*-\s*.*)?\s*$"
+          if (Test-Path "CHANGELOG.md") {
+            $content = Get-Content "CHANGELOG.md" -Raw -Encoding utf8
+            $lines = $content -split "`r?`n"
+            $escapedVersion = [regex]::Escape($version)
+            $headingPattern = "^\s*##\s+\[?$escapedVersion\]?(?:\s*-\s*.*)?\s*$"
 
-          $start = -1
-          for ($i = 0; $i -lt $lines.Count; $i++) {
-            if ($lines[$i] -match $headingPattern) {
-              $start = $i
-              break
+            $start = -1
+            for ($i = 0; $i -lt $lines.Count; $i++) {
+              if ($lines[$i] -match $headingPattern) {
+                $start = $i
+                break
+              }
+            }
+
+            if ($start -ge 0) {
+              $end = $lines.Count
+              for ($i = $start + 1; $i -lt $lines.Count; $i++) {
+                if ($lines[$i] -match '^\s*##\s+') {
+                  $end = $i
+                  break
+                }
+              }
+
+              if ($end -gt ($start + 1)) {
+                $body = ($lines[($start + 1)..($end - 1)] -join "`n").Trim()
+              }
             }
           }
 
-          if ($start -lt 0) {
-            Write-Host "Available changelog headings:"
-            $lines | Where-Object { $_ -match '^\s*##\s+' } | ForEach-Object { Write-Host "  $_" }
-            throw "No changelog section found for version $version."
-          }
-
-          $end = $lines.Count
-          for ($i = $start + 1; $i -lt $lines.Count; $i++) {
-            if ($lines[$i] -match '^\s*##\s+') {
-              $end = $i
-              break
+          # Secours : la release ne doit plus echouer uniquement parce que la section
+          # du CHANGELOG est absente. Les notes versionnees sont utilisees a la place.
+          if ([string]::IsNullOrWhiteSpace($body)) {
+            $releaseNotesPath = "RELEASE-NOTES-$version.md"
+            if (Test-Path $releaseNotesPath) {
+              Write-Warning "CHANGELOG section $version missing; using $releaseNotesPath instead."
+              $body = (Get-Content $releaseNotesPath -Raw -Encoding utf8).Trim()
             }
           }
-
-          if ($end -le ($start + 1)) {
-            throw "The changelog for version $version is empty."
-          }
-
-          $body = ($lines[($start + 1)..($end - 1)] -join "`n").Trim()
 
           if ([string]::IsNullOrWhiteSpace($body)) {
-            throw "The changelog for version $version is empty."
+            Write-Host "Available changelog headings:"
+            if (Test-Path "CHANGELOG.md") {
+              Get-Content "CHANGELOG.md" -Encoding utf8 |
+                Where-Object { $_ -match '^\s*##\s+' } |
+                ForEach-Object { Write-Host "  $_" }
+            }
+            throw "No release notes found for version $version."
           }
 
-          Write-Host "Changelog found for $version"
+          Write-Host "Release notes found for $version"
           Write-Host $body
 
           $delimiter = "CHANGELOG_$([guid]::NewGuid().ToString('N'))"
-
           Add-Content -Path $env:GITHUB_OUTPUT -Value "body<<$delimiter" -Encoding utf8
           Add-Content -Path $env:GITHUB_OUTPUT -Value $body -Encoding utf8
           Add-Content -Path $env:GITHUB_OUTPUT -Value $delimiter -Encoding utf8

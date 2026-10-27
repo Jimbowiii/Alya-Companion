@@ -1,5 +1,95 @@
 # Changelog
 
+## [1.0.0-rc.10] - 2026-10-27
+
+RC10 est une mise à jour majeure d'**ALYA Companion** centrée sur l'identité visuelle, les profils joueurs et l'arrivée du nouveau module **Gym Rerun**.
+
+### 🏋️ Gym Rerun
+
+- Ajout d'un nouvel onglet natif **Gym Rerun** dans la sidebar.
+- Ajout de six stratégies :
+  - 6 Pillars
+  - 7 Hells
+  - Double Typhlosion
+  - Prehistoric 5
+  - Starry Dance
+  - Tempest Explosion
+- Chaque stratégie possède une vue détaillée de l'équipe avec les Pokémon nécessaires, leurs rôles, objets, talents, natures, IV, EV et attaques.
+- Localisation française des informations de combat et des routes afin de rendre les guides directement exploitables depuis ALYA Companion.
+- Ajout d'un mode **Path** distinct de la fiche d'équipe.
+- Les routes sont présentées sous forme de timeline/checklist avec :
+  - ordre des arènes ;
+  - lead à utiliser ;
+  - attaques recommandées ;
+  - variantes selon les Pokémon adverses ;
+  - points de soin ;
+  - changements d'objets.
+- Ajout de filtres de route par région.
+- La progression du Path est sauvegardée localement entre les sessions.
+- Refonte complète de la présentation afin de conserver une interface propre à ALYA Companion et de ne pas intégrer le site communautaire source.
+- Amélioration générale de la taille des textes et de la lisibilité du module.
+- Ajout d'un bénéfice potentiel directement sur les cartes des stratégies.
+- Suppression des encarts techniques destinés au développement afin de ne conserver que les informations utiles aux joueurs.
+
+### 🎞️ Illustrations et fonds animés Gym Rerun
+
+- Ajout d'un fond vidéo animé dédié à la page principale Gym Rerun.
+- Ajout d'une illustration vidéo dédiée à chacune des six stratégies.
+- Lorsqu'une stratégie est ouverte, son illustration devient automatiquement le fond animé de l'onglet.
+- Le retour à la liste restaure automatiquement le fond principal Gym Rerun.
+- Les cartes utilisent des posters statiques légers au repos.
+- Le poster d'une stratégie devient son animation lorsque la souris le survole.
+- Les vidéos des six cartes ne tournent jamais toutes simultanément afin de limiter l'utilisation GPU et mémoire.
+- Les médias ont été préparés pour une meilleure compatibilité avec WebView2.
+- Suppression du grand poster dans la vue détaillée d'une stratégie afin de laisser le fond animé pleinement visible derrière les fiches Pokémon.
+
+### 🏅 Badges joueurs
+
+- Ajout d'un système complet de badges attribuables aux profils Alya.
+- Les DEV peuvent créer, supprimer, attribuer et retirer des badges depuis la gestion des utilisateurs.
+- Ajout de badges texte / emoji personnalisables avec couleur.
+- Ajout de badges basés sur une image.
+- Les images de badges sont stockées dans le bucket Supabase public `alya-badges` avec règles RLS dédiées.
+- Les badges image apparaissent dans le profil uniquement sous forme d'image, sans texte permanent.
+- Le nom du badge est affiché au survol via un tooltip Alya.
+- La sidebar affiche les premiers badges du joueur, puis un indicateur `+N` lorsque le profil en possède davantage.
+- Ajout d'un ordre manuel des badges par joueur.
+- L'ordre choisi est enregistré dans Supabase et utilisé pour déterminer les badges prioritaires affichés dans la sidebar.
+- Les modifications sensibles de badges passent par des fonctions PostgreSQL sécurisées réservées aux DEV.
+- La mention **ALYA CLOUD** a été retirée du bloc profil afin d'alléger sa présentation.
+- Le rôle du joueur et ses badges sont regroupés sous son pseudo.
+
+### 👥 Gestion des joueurs
+
+- Dans **Prépa Alya** et **Gestion utilisateurs DEV**, les joueurs sont désormais regroupés par rôle dans l'ordre :
+  1. DEV
+  2. Admin
+  3. user
+- Le tri alphabétique reste appliqué à l'intérieur de chaque groupe de rôle.
+
+### 🖼️ Avatar Discord
+
+- Amélioration de la récupération de l'avatar depuis les métadonnées OAuth Discord.
+- Réparation automatique du profil lorsqu'une URL d'avatar Discord peut être reconstruite depuis les données du compte.
+- Ajout des domaines CDN Discord nécessaires dans la politique CSP Tauri.
+- Ajout d'un fallback visuel si le chargement d'un avatar distant échoue.
+
+### 🌺 Nouvelle identité ALYA
+
+- Remplacement du logo principal de l'application par le nouveau logo ALYA.
+- Mise à jour du logo visible dans la sidebar.
+- Génération et remplacement du jeu d'icônes Windows / Tauri utilisé par l'exécutable et l'installateur.
+- Le nom visible de l'application devient désormais **ALYA Companion**.
+- Conservation de l'identifiant technique `alya-companion` afin de ne pas casser les chemins, deep-links et mécanismes existants.
+
+### 🔧 Publication et compatibilité
+
+- Conservation du pipeline GitHub Actions stabilisé dans les RC précédentes.
+- Conservation de l'injection sécurisée des variables Supabase lors du build de production.
+- Conservation du CSP Supabase HTTPS / WebSocket corrigé en RC9.
+- Le workflow de publication utilise le changelog UTF-8 pour générer automatiquement la GitHub Release et l'annonce Discord.
+- Le module Gym Rerun embarque plusieurs médias animés ; la taille du paquet Windows est donc supérieure à celle des RC précédentes.
+
 ## [1.0.0-rc.9] - 2026-10-26
 
 ### 🐛 Correctif Supabase / réseau
