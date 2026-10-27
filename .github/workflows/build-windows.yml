@@ -42,17 +42,43 @@ jobs:
 
           $version = $env:RELEASE_TAG -replace '^v', ''
           $content = Get-Content "CHANGELOG.md" -Raw -Encoding utf8
+          $lines = $content -split "`r?`n"
           $escapedVersion = [regex]::Escape($version)
 
-          $pattern = "(?ms)^##\s+\[$escapedVersion\].*?\r?\n(?<body>.*?)(?=^##\s+\[|\z)"
+          # Formats acceptes :
+          #   ## [1.0.0-rc.10] - 2026-10-27
+          #   ## 1.0.0-rc.10 - 2026-10-27
+          #   ## [1.0.0-rc.10]
+          #   ## 1.0.0-rc.10
+          $headingPattern = "^\s*##\s+\[?$escapedVersion\]?(?:\s*-\s*.*)?\s*$"
 
-          $match = [regex]::Match($content, $pattern)
+          $start = -1
+          for ($i = 0; $i -lt $lines.Count; $i++) {
+            if ($lines[$i] -match $headingPattern) {
+              $start = $i
+              break
+            }
+          }
 
-          if (-not $match.Success) {
+          if ($start -lt 0) {
+            Write-Host "Available changelog headings:"
+            $lines | Where-Object { $_ -match '^\s*##\s+' } | ForEach-Object { Write-Host "  $_" }
             throw "No changelog section found for version $version."
           }
 
-          $body = $match.Groups["body"].Value.Trim()
+          $end = $lines.Count
+          for ($i = $start + 1; $i -lt $lines.Count; $i++) {
+            if ($lines[$i] -match '^\s*##\s+') {
+              $end = $i
+              break
+            }
+          }
+
+          if ($end -le ($start + 1)) {
+            throw "The changelog for version $version is empty."
+          }
+
+          $body = ($lines[($start + 1)..($end - 1)] -join "`n").Trim()
 
           if ([string]::IsNullOrWhiteSpace($body)) {
             throw "The changelog for version $version is empty."
@@ -67,7 +93,7 @@ jobs:
           Add-Content -Path $env:GITHUB_OUTPUT -Value $body -Encoding utf8
           Add-Content -Path $env:GITHUB_OUTPUT -Value $delimiter -Encoding utf8
 
-      - name: Build and publish Alya Companion
+      - name: Build and publish ALYA Companion
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -77,7 +103,7 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: "Alya Companion ${{ github.ref_name }}"
+          releaseName: "ALYA Companion ${{ github.ref_name }}"
           releaseBody: ${{ steps.changelog.outputs.body }}
           prerelease: ${{ contains(github.ref_name, '-') }}
           uploadUpdaterJson: true
@@ -111,8 +137,8 @@ jobs:
           if (-not $metadataReleaseExists) {
             Write-Host "Creating updater-metadata release"
             gh release create updater-metadata `
-              --title "Alya Companion Updater Metadata" `
-              --notes "Metadata utilisé par le système de mise à jour intégré d'Alya Companion." `
+              --title "ALYA Companion Updater Metadata" `
+              --notes "Metadata utilisé par le système de mise à jour intégré d'ALYA Companion." `
               --prerelease
           }
 
@@ -174,15 +200,15 @@ jobs:
           "@
 
           $payload = @{
-            username = "Alya Companion"
+            username = "ALYA Companion"
             embeds = @(
               @{
-                title = "🌺 Nouvelle version d'Alya Companion disponible !"
+                title = "🌺 Nouvelle version d'ALYA Companion disponible !"
                 description = $description
                 fields = @(
                   @{
                     name = "📥 Téléchargement"
-                    value = "[Télécharger Alya Companion]($downloadUrl)"
+                    value = "[Télécharger ALYA Companion]($downloadUrl)"
                     inline = $true
                   },
                   @{
@@ -192,7 +218,7 @@ jobs:
                   }
                 )
                 footer = @{
-                  text = "Alya Companion • PokeMMO Companion"
+                  text = "ALYA Companion • PokeMMO Companion"
                 }
               }
             )
