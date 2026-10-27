@@ -51,7 +51,7 @@ export async function checkCompanionUpdate(): Promise<CompanionUpdateStatus> {
   return {
     current_version: update.currentVersion || currentVersion,
     latest_version: update.version,
-    release_name: `Alya Companion ${update.version}`,
+    release_name: `ALYA Companion ${update.version}`,
     changelog: update.body ?? null,
     published_at: update.date ?? null,
     update_available: true,
@@ -79,7 +79,7 @@ export async function installCompanionUpdate(
     });
 
     if (!update) {
-      throw new Error("Aucune mise à jour Alya Companion n'est disponible.");
+      throw new Error("Aucune mise à jour ALYA Companion n'est disponible.");
     }
 
     pendingUpdate = update;

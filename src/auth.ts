@@ -31,6 +31,15 @@ export type CloudPreferences = Pick<
 
 export type AlyaRole = "user" | "Admin" | "DEV";
 
+export type AlyaBadge = {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  image_url: string | null;
+  created_at: string;
+};
+
 export type AlyaProfile = {
   id: string;
   username: string;
@@ -39,7 +48,10 @@ export type AlyaProfile = {
   preferences: Partial<CloudPreferences>;
   created_at: string;
   updated_at: string;
+  badges: AlyaBadge[];
 };
+
+type AlyaProfileRow = Omit<AlyaProfile, "badges">;
 
 function requireSupabase() {
   if (!supabase) throw new Error("Supabase n'est pas configuré dans .env.");
@@ -53,6 +65,82 @@ function defaultUsername(user: User) {
   if (typeof fromMetadata === "string") return fromMetadata.trim().slice(0, 32);
   return (user.email?.split("@")[0] || "Utilisateur Alya").slice(0, 32);
 }
+
+
+function firstNonEmptyString(values: unknown[]) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim().length > 0) return value.trim();
+  }
+  return null;
+}
+
+function normalizeExternalAvatarUrl(value: string | null | undefined) {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("//")) return `https:${trimmed}`;
+  return trimmed;
+}
+
+function isDiscordAvatarUrl(value: string | null | undefined) {
+  if (!value) return false;
+  try {
+    const host = new URL(value).hostname.toLowerCase();
+    return host === "cdn.discordapp.com"
+      || host === "media.discordapp.net"
+      || host === "images-ext-1.discordapp.net";
+  } catch {
+    return false;
+  }
+}
+
+function discordAvatarUrlFromParts(userId: string | null, avatarHash: string | null) {
+  if (!userId || !avatarHash) return null;
+  const extension = avatarHash.startsWith("a_") ? "gif" : "png";
+  return `https://cdn.discordapp.com/avatars/${userId}/${avatarHash}.${extension}?size=128`;
+}
+
+function oauthAvatarUrl(user: User) {
+  const metadata = user.user_metadata ?? {};
+  const direct = normalizeExternalAvatarUrl(firstNonEmptyString([
+    metadata.avatar_url,
+    metadata.picture,
+    metadata.image,
+  ]));
+  if (direct) return direct;
+
+  const identities = Array.isArray((user as User & { identities?: Array<{ provider?: string; identity_data?: Record<string, unknown> | null }> }).identities)
+    ? (user as User & { identities?: Array<{ provider?: string; identity_data?: Record<string, unknown> | null }> }).identities ?? []
+    : [];
+
+  for (const identity of identities) {
+    const identityData = identity?.identity_data ?? {};
+    const directIdentityUrl = normalizeExternalAvatarUrl(firstNonEmptyString([
+      identityData.avatar_url,
+      identityData.picture,
+      identityData.image,
+    ]));
+    if (directIdentityUrl) return directIdentityUrl;
+
+    if (identity?.provider === "discord") {
+      const discordUserId = firstNonEmptyString([
+        identityData.provider_id,
+        identityData.sub,
+        metadata.provider_id,
+        metadata.sub,
+      ]);
+      const discordAvatarHash = firstNonEmptyString([
+        identityData.avatar,
+        metadata.avatar,
+      ]);
+      const built = discordAvatarUrlFromParts(discordUserId, discordAvatarHash);
+      if (built) return built;
+    }
+  }
+
+  return null;
+}
+
 
 export function cloudPreferencesFromSettings(settings: Settings): CloudPreferences {
   return {
@@ -337,6 +425,130 @@ export async function listenForAuthDeepLinks(onProcessed?: () => void, onError?:
   return unlisten;
 }
 
+async function attachBadgesToProfiles(rows: AlyaProfileRow[]): Promise<AlyaProfile[]> {
+  if (rows.length === 0) return [];
+  const client = requireSupabase();
+  const userIds = rows.map((row) => row.id);
+
+  const [{ data: badges, error: badgesError }, { data: assignments, error: assignmentsError }] = await Promise.all([
+    client.from("alya_badges").select("id, name, icon, color, image_url, created_at").order("created_at", { ascending: true }),
+    client.from("profile_badges").select("user_id, badge_id, display_order, assigned_at").in("user_id", userIds),
+  ]);
+
+  // Les badges sont un enrichissement visuel : une migration pas encore appliquée
+  // ne doit jamais empêcher Alya Cloud de fonctionner.
+  if (badgesError || assignmentsError) {
+    return rows.map((row) => ({ ...row, badges: [] }));
+  }
+
+  const badgeMap = new Map<string, AlyaBadge>();
+  for (const badge of badges ?? []) badgeMap.set(String(badge.id), badge as AlyaBadge);
+
+  const sortedAssignments = [...(assignments ?? [])].sort((left, right) => {
+    const leftUser = String(left.user_id);
+    const rightUser = String(right.user_id);
+    if (leftUser !== rightUser) return leftUser.localeCompare(rightUser);
+
+    const leftOrder = Number(left.display_order ?? 0);
+    const rightOrder = Number(right.display_order ?? 0);
+    if (leftOrder !== rightOrder) return leftOrder - rightOrder;
+
+    return String(left.assigned_at ?? "").localeCompare(String(right.assigned_at ?? ""));
+  });
+
+  const byUser = new Map<string, AlyaBadge[]>();
+  for (const assignment of sortedAssignments) {
+    const badge = badgeMap.get(String(assignment.badge_id));
+    if (!badge) continue;
+    const userId = String(assignment.user_id);
+    const current = byUser.get(userId) ?? [];
+    current.push(badge);
+    byUser.set(userId, current);
+  }
+
+  return rows.map((row) => ({ ...row, badges: byUser.get(row.id) ?? [] }));
+}
+
+async function attachBadgesToProfile(row: AlyaProfileRow): Promise<AlyaProfile> {
+  const [profile] = await attachBadgesToProfiles([row]);
+  return profile ?? { ...row, badges: [] };
+}
+
+export async function listAlyaBadges(): Promise<AlyaBadge[]> {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("alya_badges")
+    .select("id, name, icon, color, image_url, created_at")
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(`Badges Alya indisponibles : ${error.message}. Applique supabase/alya_badges.sql.`);
+  return (data ?? []) as AlyaBadge[];
+}
+
+export async function createAlyaBadge(values: { name: string; icon: string; color: string; image_url?: string | null }): Promise<AlyaBadge> {
+  const client = requireSupabase();
+  const { data, error } = await client.rpc("create_alya_badge", {
+    p_name: values.name.trim(),
+    p_icon: values.icon.trim() || "✦",
+    p_color: values.color,
+    p_image_url: values.image_url?.trim() || null,
+  });
+  if (error) throw error;
+  const badge = Array.isArray(data) ? data[0] : data;
+  if (!badge) throw new Error("Supabase n'a pas retourné le badge créé.");
+  return badge as AlyaBadge;
+}
+
+
+export async function uploadAlyaBadgeImage(file: File, badgeName?: string) {
+  const client = requireSupabase();
+  if (!file.type.startsWith("image/")) throw new Error("Sélectionne une image pour le badge.");
+  if (file.size > 2 * 1024 * 1024) throw new Error("L'image du badge doit faire moins de 2 Mo.");
+
+  const extension = (file.name.split(".").pop() || "png").replace(/[^a-zA-Z0-9]/g, "").toLowerCase() || "png";
+  const safeName = (badgeName ?? file.name)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 32) || "badge";
+  const path = `${Date.now()}-${safeName}-${crypto.randomUUID()}.${extension}`;
+  const { error: uploadError } = await client.storage.from("alya-badges").upload(path, file, {
+    upsert: false,
+    contentType: file.type,
+    cacheControl: "3600",
+  });
+  if (uploadError) throw new Error(`Upload du badge impossible : ${uploadError.message}`);
+
+  const { data } = client.storage.from("alya-badges").getPublicUrl(path);
+  return data.publicUrl;
+}
+
+export async function deleteAlyaBadge(badgeId: string) {
+  const client = requireSupabase();
+  const { error } = await client.rpc("delete_alya_badge", { p_badge_id: badgeId });
+  if (error) throw error;
+}
+
+export async function setAlyaUserBadge(userId: string, badgeId: string, assigned: boolean) {
+  const client = requireSupabase();
+  const { error } = await client.rpc("set_alya_user_badge", {
+    p_user_id: userId,
+    p_badge_id: badgeId,
+    p_assigned: assigned,
+  });
+  if (error) throw error;
+}
+
+export async function setAlyaUserBadgeOrder(userId: string, badgeIds: string[]) {
+  const client = requireSupabase();
+  const { error } = await client.rpc("set_alya_user_badge_order", {
+    p_user_id: userId,
+    p_badge_ids: badgeIds,
+  });
+  if (error) throw error;
+}
+
 export async function ensureProfile(user: User): Promise<AlyaProfile> {
   const client = requireSupabase();
   const { data: existing, error: selectError } = await client
@@ -346,12 +558,26 @@ export async function ensureProfile(user: User): Promise<AlyaProfile> {
     .maybeSingle();
 
   if (selectError) throw selectError;
-  if (existing) return existing as AlyaProfile;
+  if (existing) {
+    const current = existing as AlyaProfileRow;
+    const nextOAuthAvatar = oauthAvatarUrl(user);
+    const shouldRefreshAvatar = Boolean(nextOAuthAvatar) && (!current.avatar_url || isDiscordAvatarUrl(current.avatar_url));
+
+    if (shouldRefreshAvatar && current.avatar_url !== nextOAuthAvatar) {
+      try {
+        return await updateProfile(user.id, { avatar_url: nextOAuthAvatar });
+      } catch {
+        return attachBadgesToProfile(current);
+      }
+    }
+
+    return attachBadgesToProfile(current);
+  }
 
   const profile = {
     id: user.id,
     username: defaultUsername(user),
-    avatar_url: null,
+    avatar_url: oauthAvatarUrl(user),
     preferences: {},
   };
 
@@ -361,7 +587,7 @@ export async function ensureProfile(user: User): Promise<AlyaProfile> {
     .select("id, username, avatar_url, role, preferences, created_at, updated_at")
     .single();
 
-  if (!error && data) return data as AlyaProfile;
+  if (!error && data) return attachBadgesToProfile(data as AlyaProfileRow);
 
   // Le trigger auth crée normalement déjà le profil. En cas de course entre
   // le trigger et le premier chargement client, relire la ligne existante.
@@ -372,7 +598,7 @@ export async function ensureProfile(user: User): Promise<AlyaProfile> {
       .eq("id", user.id)
       .single();
     if (racedError) throw racedError;
-    return racedProfile as AlyaProfile;
+    return attachBadgesToProfile(racedProfile as AlyaProfileRow);
   }
 
   if (error) throw error;
@@ -392,7 +618,7 @@ export async function updateProfile(userId: string, values: { username?: string;
     .select("id, username, avatar_url, role, preferences, created_at, updated_at")
     .single();
   if (error) throw error;
-  return data as AlyaProfile;
+  return attachBadgesToProfile(data as AlyaProfileRow);
 }
 
 export async function uploadAvatar(userId: string, file: File) {
@@ -429,7 +655,7 @@ export async function listAlyaProfiles(): Promise<AlyaProfile[]> {
     .select("id, username, avatar_url, role, preferences, created_at, updated_at")
     .order("username", { ascending: true });
   if (error) throw error;
-  return (data ?? []) as AlyaProfile[];
+  return attachBadgesToProfiles((data ?? []) as AlyaProfileRow[]);
 }
 
 export async function setAlyaUserRole(userId: string, role: AlyaRole) {

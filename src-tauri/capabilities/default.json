@@ -1,7 +1,7 @@
 {
     "$schema":  "../gen/schemas/desktop-schema.json",
     "identifier":  "default",
-    "description":  "Default capabilities for Alya Companion",
+    "description":  "Default capabilities for ALYA Companion",
     "windows":  [
                     "main"
                 ],

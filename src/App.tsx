@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties } from "react";
+import type { ChangeEvent, CSSProperties } from "react";
 import type { LucideIcon } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
@@ -29,6 +29,7 @@ import {
   ShipWheel,
   Sparkles,
   TimerReset,
+  Trophy,
   Table2,
   UserRound,
   Users,
@@ -45,9 +46,10 @@ import type { EmbeddedWebviewKind } from "./bridge";
 import type { AppState, CompanionUpdateStatus, Settings, SurfPatch, ThemeStatus } from "./types";
 import { AuthGate } from "./AuthGate";
 import { AccountModal } from "./AccountModal";
+import { GymRerunPage } from "./GymRerunPage";
 import { useAlyaAuth } from "./useAlyaAuth";
-import { cloudPreferencesFromSettings, listAlyaProfiles, loadCloudShinyWar, saveCloudPreferences, saveCloudShinyWar, setAlyaUserRole } from "./auth";
-import type { AlyaProfile, AlyaRole } from "./auth";
+import { cloudPreferencesFromSettings, createAlyaBadge, deleteAlyaBadge, listAlyaBadges, listAlyaProfiles, loadCloudShinyWar, saveCloudPreferences, saveCloudShinyWar, setAlyaUserBadge, setAlyaUserBadgeOrder, setAlyaUserRole, uploadAlyaBadgeImage } from "./auth";
+import type { AlyaBadge, AlyaProfile, AlyaRole } from "./auth";
 import alyaIcon from "./assets/alya-icon.png";
 import dashboardBackground from "./assets/dashboard-background.webm";
 import alyarchetypeBackground from "./assets/alyarchetype-background.png";
@@ -70,7 +72,7 @@ const EMPTY_SETTINGS: Settings = {
   vanity_url: "https://www.crimsoncoremmo.co.uk/vanity-booth",
   accent_color: "#9b7bdf",
   hidden_tabs: [],
-  tab_order: ["dashboard", "theme", "surf", "vanity", "shinyboard", "shinywar", "rotations", "forum"],
+  tab_order: ["dashboard", "theme", "surf", "vanity", "shinyboard", "shinywar", "gymrerun", "rotations", "forum"],
   dashboard_modules: ["theme", "surf", "rotations"],
 };
 
@@ -81,6 +83,7 @@ const NAV_ITEMS = [
   ["vanity", "Vanity", ImageIcon],
   ["shinyboard", "Shinyboard", Gem],
   ["shinywar", "Shiny-War", Table2],
+  ["gymrerun", "Gym Rerun", Trophy],
   ["rotations", "Rotations", TimerReset],
   ["forum", "Forum", MessagesSquare],
 ] as const;
@@ -124,6 +127,7 @@ const DEFAULT_PAGE_BACKGROUNDS: Record<CustomizableBackgroundTab, PageBackground
   vanity: "external-tabs",
   shinyboard: "external-tabs",
   shinywar: "shiny-war",
+  gymrerun: "rotations",
   rotations: "rotations",
   forum: "external-tabs",
 };
@@ -134,6 +138,7 @@ const PAGE_BACKGROUND_OVERLAYS: Record<CustomizableBackgroundTab, string> = {
   vanity: "linear-gradient(rgba(5, 6, 10, .34), rgba(5, 6, 10, .56))",
   shinyboard: "linear-gradient(rgba(5, 6, 10, .34), rgba(5, 6, 10, .56))",
   shinywar: "linear-gradient(rgba(7, 8, 18, .28), rgba(7, 8, 18, .44))",
+  gymrerun: "linear-gradient(rgba(7, 9, 16, .30), rgba(7, 9, 16, .52))",
   rotations: "linear-gradient(rgba(8, 12, 24, .28), rgba(8, 12, 24, .48))",
   forum: "linear-gradient(rgba(5, 6, 10, .34), rgba(5, 6, 10, .56))",
 };
@@ -144,6 +149,7 @@ function isCustomizableBackgroundTab(tab: Tab): tab is CustomizableBackgroundTab
     || tab === "vanity"
     || tab === "shinyboard"
     || tab === "shinywar"
+    || tab === "gymrerun"
     || tab === "rotations"
     || tab === "forum";
 }
@@ -475,6 +481,46 @@ function RoleBadge({ role }: { role: AlyaRole }) {
   return <span className={`role-badge role-${role.toLowerCase()}`}>{role}</span>;
 }
 
+const ALYA_ROLE_SORT_ORDER: Record<AlyaRole, number> = {
+  DEV: 0,
+  Admin: 1,
+  user: 2,
+};
+
+function sortProfilesByRole(profiles: AlyaProfile[]) {
+  return [...profiles].sort((left, right) => {
+    const roleDifference = ALYA_ROLE_SORT_ORDER[left.role] - ALYA_ROLE_SORT_ORDER[right.role];
+    if (roleDifference !== 0) return roleDifference;
+    return left.username.localeCompare(right.username, "fr-FR", { sensitivity: "base" });
+  });
+}
+
+function PlayerBadge({ badge, compact = false }: { badge: AlyaBadge; compact?: boolean }) {
+  const style = { "--player-badge-color": badge.color } as CSSProperties;
+  if (badge.image_url && compact) {
+    return <span className="player-badge-image-only alya-badge-tooltip" data-tooltip={badge.name} aria-label={badge.name}>
+      <img src={badge.image_url} alt="" loading="lazy" />
+    </span>;
+  }
+
+  return <span className={`player-badge ${compact ? "compact" : ""} ${badge.image_url ? "with-image" : ""}`} style={style}>
+    {badge.image_url
+      ? <span className="player-badge-image-wrap"><img className="player-badge-image" src={badge.image_url} alt="" loading="lazy" /></span>
+      : <span className="player-badge-icon">{badge.icon}</span>}
+    <span className="player-badge-name">{badge.name}</span>
+  </span>;
+}
+
+function SidebarBadges({ badges }: { badges: AlyaBadge[] }) {
+  if (badges.length === 0) return null;
+  const visible = badges.slice(0, 2);
+  const hidden = badges.length - visible.length;
+  return <span className="sidebar-profile-badges">
+    {visible.map((badge) => <PlayerBadge key={badge.id} badge={badge} compact />)}
+    {hidden > 0 && <span className="player-badge-more" title={badges.slice(2).map((badge) => badge.name).join(", ")}>+{hidden}</span>}
+  </span>;
+}
+
 function ReadonlyShinyWarSheet({ accounts }: { accounts: ShinyWarAccount[] }) {
   const grandTotal = accounts.reduce((sum, account) => sum + account.characters.reduce((accountSum, character) => accountSum + character.ditto, 0), 0);
   const completedCharacters = accounts.reduce((sum, account) => sum + account.characters.filter((character) => character.ditto >= SHINY_WAR_DITTO_TARGET).length, 0);
@@ -528,10 +574,21 @@ function ReadonlyShinyWarSheet({ accounts }: { accounts: ShinyWarAccount[] }) {
   </div>;
 }
 
+function AvatarImage({ src, updatedAt, alt, fallbackSize }: { src: string | null; updatedAt: string; alt?: string; fallbackSize: number }) {
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [src, updatedAt]);
+
+  if (!src || failed) return <UserRound size={fallbackSize}/>;
+
+  const resolved = `${src}${src.includes("?") ? "&" : "?"}v=${encodeURIComponent(updatedAt)}`;
+  return <img src={resolved} alt={alt ?? ""} onError={() => setFailed(true)} />;
+}
+
 function ProfileAvatar({ profile }: { profile: AlyaProfile }) {
-  return <span className="staff-user-avatar">{profile.avatar_url
-    ? <img src={`${profile.avatar_url}${profile.avatar_url.includes("?") ? "&" : "?"}v=${encodeURIComponent(profile.updated_at)}`} alt=""/>
-    : <UserRound size={20}/>}</span>;
+  return <span className="staff-user-avatar"><AvatarImage src={profile.avatar_url} updatedAt={profile.updated_at} fallbackSize={20} /></span>;
 }
 
 function PrepaAlyaPage() {
@@ -560,8 +617,7 @@ function PrepaAlyaPage() {
     } catch (err) { setError(String(err)); }
     finally { setSheetLoading(false); }
   };
-
-  const filtered = profiles.filter((profile) => profile.username.toLocaleLowerCase("fr-FR").includes(search.trim().toLocaleLowerCase("fr-FR")));
+  const filtered = sortProfilesByRole(profiles.filter((profile) => profile.username.toLocaleLowerCase("fr-FR").includes(search.trim().toLocaleLowerCase("fr-FR"))));
 
   if (selected) return <section className="staff-page">
     <header className="page-header staff-detail-header">
@@ -601,19 +657,38 @@ function PrepaAlyaPage() {
 
 function DevUserAdminPage({ currentUserId }: { currentUserId: string }) {
   const [profiles, setProfiles] = useState<AlyaProfile[]>([]);
+  const [badges, setBadges] = useState<AlyaBadge[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [busyUser, setBusyUser] = useState<string | null>(null);
+  const [busyBadge, setBusyBadge] = useState<string | null>(null);
+  const [badgeName, setBadgeName] = useState("");
+  const [badgeIcon, setBadgeIcon] = useState("✦");
+  const [badgeColor, setBadgeColor] = useState("#9b7bdf");
+  const [badgeImageFile, setBadgeImageFile] = useState<File | null>(null);
+  const [badgeImagePreview, setBadgeImagePreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const refresh = async () => {
     setLoading(true); setError(null);
-    try { setProfiles(await listAlyaProfiles()); }
-    catch (err) { setError(String(err)); }
+    try {
+      const [nextProfiles, nextBadges] = await Promise.all([listAlyaProfiles(), listAlyaBadges()]);
+      setProfiles(nextProfiles);
+      setBadges(nextBadges);
+    } catch (err) { setError(String(err)); }
     finally { setLoading(false); }
   };
   useEffect(() => { void refresh(); }, []);
+  useEffect(() => {
+    if (!badgeImageFile) {
+      setBadgeImagePreview(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(badgeImageFile);
+    setBadgeImagePreview(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [badgeImageFile]);
 
   const changeRole = async (profile: AlyaProfile, role: AlyaRole) => {
     if (profile.id === currentUserId || profile.role === role) return;
@@ -626,13 +701,124 @@ function DevUserAdminPage({ currentUserId }: { currentUserId: string }) {
     finally { setBusyUser(null); }
   };
 
-  const filtered = profiles.filter((profile) => profile.username.toLocaleLowerCase("fr-FR").includes(search.trim().toLocaleLowerCase("fr-FR")));
+  const createBadge = async () => {
+    const name = badgeName.trim();
+    if (!name) return;
+    setBusyBadge("create"); setError(null); setNotice(null);
+    try {
+      const uploadedImageUrl = badgeImageFile ? await uploadAlyaBadgeImage(badgeImageFile, name) : null;
+      const created = await createAlyaBadge({ name, icon: badgeIcon.trim() || "✦", color: badgeColor, image_url: uploadedImageUrl });
+      setBadges((current) => [...current, created]);
+      setBadgeName("");
+      setBadgeIcon("✦");
+      setBadgeColor("#9b7bdf");
+      setBadgeImageFile(null);
+      setBadgeImagePreview(null);
+      setNotice(uploadedImageUrl
+        ? `Badge image « ${created.name} » créé. Sur le profil, seule l'image sera affichée et le nom apparaîtra au survol.`
+        : `Badge « ${created.name} » créé.`);
+    } catch (err) { setError(String(err)); }
+    finally { setBusyBadge(null); }
+  };
+
+  const removeBadge = async (badge: AlyaBadge) => {
+    if (!window.confirm(`Supprimer le badge « ${badge.name} » pour tous les joueurs ?`)) return;
+    setBusyBadge(`delete:${badge.id}`); setError(null); setNotice(null);
+    try {
+      await deleteAlyaBadge(badge.id);
+      setBadges((current) => current.filter((item) => item.id !== badge.id));
+      setProfiles((current) => current.map((profile) => ({ ...profile, badges: profile.badges.filter((item) => item.id !== badge.id) })));
+      window.dispatchEvent(new CustomEvent("alya-profile-refresh"));
+      setNotice(`Badge « ${badge.name} » supprimé.`);
+    } catch (err) { setError(String(err)); }
+    finally { setBusyBadge(null); }
+  };
+
+  const toggleBadge = async (profile: AlyaProfile, badge: AlyaBadge) => {
+    const assigned = profile.badges.some((item) => item.id === badge.id);
+    const key = `${profile.id}:${badge.id}`;
+    setBusyBadge(key); setError(null); setNotice(null);
+    try {
+      await setAlyaUserBadge(profile.id, badge.id, !assigned);
+      setProfiles((current) => current.map((item) => {
+        if (item.id !== profile.id) return item;
+        const nextBadges = assigned
+          ? item.badges.filter((currentBadge) => currentBadge.id !== badge.id)
+          : [...item.badges, badge];
+        return { ...item, badges: nextBadges, updated_at: new Date().toISOString() };
+      }));
+      if (profile.id === currentUserId) window.dispatchEvent(new CustomEvent("alya-profile-refresh"));
+      setNotice(assigned ? `Badge « ${badge.name} » retiré à ${profile.username}.` : `Badge « ${badge.name} » attribué à ${profile.username}.`);
+    } catch (err) { setError(String(err)); }
+    finally { setBusyBadge(null); }
+  };
+
+
+  const moveAssignedBadge = async (profile: AlyaProfile, badgeId: string, direction: -1 | 1) => {
+    const currentIndex = profile.badges.findIndex((badge) => badge.id === badgeId);
+    const nextIndex = currentIndex + direction;
+    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= profile.badges.length) return;
+
+    const nextBadges = [...profile.badges];
+    const [moved] = nextBadges.splice(currentIndex, 1);
+    nextBadges.splice(nextIndex, 0, moved);
+
+    const key = `order:${profile.id}`;
+    setBusyBadge(key); setError(null); setNotice(null);
+    try {
+      await setAlyaUserBadgeOrder(profile.id, nextBadges.map((badge) => badge.id));
+      setProfiles((current) => current.map((item) => item.id === profile.id
+        ? { ...item, badges: nextBadges, updated_at: new Date().toISOString() }
+        : item));
+      if (profile.id === currentUserId) window.dispatchEvent(new CustomEvent("alya-profile-refresh"));
+      setNotice(`Ordre des badges de ${profile.username} enregistré.`);
+    } catch (err) { setError(String(err)); }
+    finally { setBusyBadge(null); }
+  };
+
+  const handleBadgeImageChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    setBadgeImageFile(file);
+    event.currentTarget.value = "";
+  };
+
+  const filtered = sortProfilesByRole(profiles.filter((profile) => profile.username.toLocaleLowerCase("fr-FR").includes(search.trim().toLocaleLowerCase("fr-FR"))));
 
   return <section className="staff-page dev-users-page">
     <header className="page-header">
-      <div><p className="eyebrow">DEV</p><h1>Gestion utilisateurs</h1><p>Attribue les rôles Alya. Seul un DEV peut effectuer ces changements.</p></div>
+      <div><p className="eyebrow">DEV</p><h1>Gestion utilisateurs</h1><p>Gère les rôles et les badges Alya. Seul un DEV peut effectuer ces changements.</p></div>
       <button className="ghost" onClick={() => void refresh()} disabled={loading}><RefreshCw size={17}/> Actualiser</button>
     </header>
+
+    <div className="dev-badge-manager">
+      <div className="dev-badge-manager-head">
+        <div><strong>Badges joueurs</strong><span>Crée des badges visuels puis attribue-les aux joueurs ci-dessous.</span></div>
+        <span className="staff-count">{badges.length} badge{badges.length > 1 ? "s" : ""}</span>
+      </div>
+      <div className="dev-badge-create">
+        <input value={badgeName} maxLength={24} onChange={(event) => setBadgeName(event.target.value)} placeholder="Nom du badge" />
+        <input className="dev-badge-icon-input" value={badgeIcon} maxLength={4} onChange={(event) => setBadgeIcon(event.target.value)} title="Emoji ou symbole" aria-label="Emoji du badge" />
+        <label className="dev-badge-color"><input type="color" value={badgeColor} onChange={(event) => setBadgeColor(event.target.value)} /><span>{badgeColor.toUpperCase()}</span></label>
+        <label className={`dev-badge-image-picker ${badgeImagePreview ? "has-image" : ""}`} title="Si tu ajoutes une image, le profil affichera uniquement cette image et le nom sera visible au survol.">
+          <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleBadgeImageChange} />
+          {badgeImagePreview
+            ? <span className="dev-badge-image-picker-preview"><img src={badgeImagePreview} alt="Prévisualisation du badge" /></span>
+            : <span className="dev-badge-image-picker-placeholder"><ImageIcon size={14} />Image</span>}
+          <span className="dev-badge-image-picker-label">{badgeImageFile ? badgeImageFile.name : "Image badge (optionnelle)"}</span>
+          {badgeImageFile && <button type="button" className="dev-badge-image-clear" onClick={(event) => { event.preventDefault(); setBadgeImageFile(null); setBadgeImagePreview(null); }} title="Retirer l'image">×</button>}
+        </label>
+        <button className="primary compact" disabled={!badgeName.trim() || busyBadge === "create"} onClick={() => void createBadge()}><Plus size={15}/>{busyBadge === "create" ? "Création…" : "Créer"}</button>
+      </div>
+      <div className="dev-badge-create-note">Si une image est fournie, ce badge s'affichera sur le profil uniquement sous forme d'image. Son nom apparaîtra au survol de la souris.</div>
+      <div className="dev-badge-catalog">
+        {badges.map((badge) => <div className="dev-badge-catalog-item" key={badge.id}>
+          <PlayerBadge badge={badge}/>
+          <button className="dev-badge-delete" disabled={busyBadge === `delete:${badge.id}`} onClick={() => void removeBadge(badge)} title={`Supprimer ${badge.name}`} aria-label={`Supprimer ${badge.name}`}><X size={13}/></button>
+        </div>)}
+        {badges.length === 0 && <span className="dev-badge-empty">Aucun badge créé pour le moment.</span>}
+      </div>
+    </div>
+
     <div className="staff-toolbar">
       <div className="staff-search"><Users size={17}/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Rechercher un utilisateur…"/></div>
       <span className="staff-count">{filtered.length} utilisateur{filtered.length > 1 ? "s" : ""}</span>
@@ -654,10 +840,34 @@ function DevUserAdminPage({ currentUserId }: { currentUserId: string }) {
               <option value="DEV">DEV</option>
             </select>
           </label>
+          <div className="dev-badge-assignments">
+            <span className="dev-badge-assignments-label">Badges</span>
+            <div className="dev-badge-assignment-list">
+              {[...profile.badges, ...badges.filter((badge) => !profile.badges.some((assignedBadge) => assignedBadge.id === badge.id))].map((badge) => {
+                const assignedIndex = profile.badges.findIndex((item) => item.id === badge.id);
+                const assigned = assignedIndex >= 0;
+                const busy = busyBadge === `${profile.id}:${badge.id}` || busyBadge === `order:${profile.id}`;
+                const style = { "--player-badge-color": badge.color } as CSSProperties;
+                return <span className={`badge-assignment-entry ${assigned ? "assigned" : ""}`} key={badge.id}>
+                  <button style={style} className={`badge-assignment-toggle ${assigned ? "active" : ""} ${badge.image_url ? "has-image" : ""}`} disabled={busy} onClick={() => void toggleBadge(profile, badge)} title={assigned ? `Retirer ${badge.name}` : `Attribuer ${badge.name}`}>
+                    {badge.image_url
+                      ? <span className="badge-assignment-image"><img src={badge.image_url} alt="" loading="lazy" /></span>
+                      : <span>{badge.icon}</span>}
+                    {badge.name}
+                  </button>
+                  {assigned && profile.badges.length > 1 && <span className="badge-order-controls" aria-label={`Ordre de ${badge.name}`}>
+                    <button type="button" disabled={busy || assignedIndex === 0} onClick={() => void moveAssignedBadge(profile, badge.id, -1)} title={`Déplacer ${badge.name} vers la gauche`}><ChevronLeft size={12}/></button>
+                    <button type="button" disabled={busy || assignedIndex === profile.badges.length - 1} onClick={() => void moveAssignedBadge(profile, badge.id, 1)} title={`Déplacer ${badge.name} vers la droite`}><ChevronRight size={12}/></button>
+                  </span>}
+                </span>;
+              })}
+              {badges.length === 0 && <span className="dev-badge-empty">Crée d'abord un badge.</span>}
+            </div>
+          </div>
         </div>;
       })}
     </div>}
-    <p className="dev-role-note">Par sécurité, ton propre rôle DEV n'est pas modifiable depuis Alya Companion. Un changement de rôle apparaît chez l'utilisateur au prochain retour au premier plan ou au prochain lancement.</p>
+    <p className="dev-role-note">Par sécurité, ton propre rôle DEV n'est pas modifiable depuis ALYA Companion. Les badges, eux, peuvent être attribués à tous les profils, y compris le tien.</p>
   </section>;
 }
 
@@ -679,6 +889,7 @@ function App() {
   const [dashboardEditorOpen, setDashboardEditorOpen] = useState(false);
   const [pageBackgrounds, setPageBackgrounds] = useState<Partial<Record<CustomizableBackgroundTab, PageBackgroundAssetId>>>(() => readPageBackgroundPreferences());
   const [backgroundPickerTab, setBackgroundPickerTab] = useState<CustomizableBackgroundTab | null>(null);
+  const [gymRerunBackgroundVideo, setGymRerunBackgroundVideo] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const cloudPreferencesAppliedRef = useRef<string | null>(null);
@@ -860,7 +1071,7 @@ function App() {
       });
 
       // Sur Windows, si l'installation est lancée correctement,
-      // Tauri va quitter Alya Companion automatiquement.
+      // Tauri va quitter ALYA Companion automatiquement.
     } catch (error) {
       notify("error", String(error));
       setBusy(null);
@@ -1044,11 +1255,14 @@ function App() {
     : null;
   const activeBackgroundAsset = activeBackgroundAssetId ? pageBackgroundAssetById(activeBackgroundAssetId) : null;
   const activeBackgroundOverlay = activeBackgroundTab ? PAGE_BACKGROUND_OVERLAYS[activeBackgroundTab] : null;
-  const contentBackgroundStyle = activeBackgroundAsset && activeBackgroundOverlay
-    ? activeBackgroundAsset.kind === "image"
-      ? { backgroundImage: `${activeBackgroundOverlay}, url("${activeBackgroundAsset.src}")` }
-      : { backgroundImage: "none" }
-    : undefined;
+  const gymRerunUsesDynamicVideo = tab === "gymrerun" && Boolean(gymRerunBackgroundVideo);
+  const contentBackgroundStyle = gymRerunUsesDynamicVideo
+    ? { backgroundImage: "none" }
+    : activeBackgroundAsset && activeBackgroundOverlay
+      ? activeBackgroundAsset.kind === "image"
+        ? { backgroundImage: `${activeBackgroundOverlay}, url("${activeBackgroundAsset.src}")` }
+        : { backgroundImage: "none" }
+      : undefined;
 
   if (!auth.configured || auth.loading || !auth.session || auth.recoveryMode) {
     return <AuthGate
@@ -1070,8 +1284,8 @@ function App() {
       <aside className="sidebar">
         <div className="sidebar-top">
           <div className="brand">
-            <img className="brand-mark" src={alyaIcon} alt="Logo Alya Companion" />
-            <div className="brand-copy"><strong>Alya Companion</strong></div>
+            <img className="brand-mark" src={alyaIcon} alt="Logo ALYA Companion" />
+            <div className="brand-copy"><strong>ALYA Companion</strong></div>
           </div>
         </div>
         <div className="sidebar-scroll">
@@ -1091,12 +1305,12 @@ function App() {
           </nav>
         </div>
         <div className="sidebar-foot">
-          {auth.profile && <button className="sidebar-profile" onClick={() => { auth.clearError(); setAccountOpen(true); }} title="Compte Alya Companion">
-            <span className="sidebar-profile-avatar">{auth.profile.avatar_url ? <img src={`${auth.profile.avatar_url}${auth.profile.avatar_url.includes("?") ? "&" : "?"}v=${encodeURIComponent(auth.profile.updated_at)}`} alt=""/> : <UserRound size={17}/>}</span>
-            <span className="sidebar-profile-copy"><strong>{auth.profile.username}</strong><span className="sidebar-profile-meta"><small>Alya Cloud</small><RoleBadge role={auth.profile.role}/></span></span>
+          {auth.profile && <button className="sidebar-profile" onClick={() => { auth.clearError(); setAccountOpen(true); }} title="Compte ALYA Companion">
+            <span className="sidebar-profile-avatar"><AvatarImage src={auth.profile.avatar_url} updatedAt={auth.profile.updated_at} fallbackSize={17} /></span>
+            <span className="sidebar-profile-copy"><strong>{auth.profile.username}</strong><span className="sidebar-profile-meta"><RoleBadge role={auth.profile.role}/><SidebarBadges badges={auth.profile.badges}/></span></span>
           </button>}
           <div className="sidebar-tool-row">
-            <button className={`customize-trigger ${customizeOpen ? "active" : ""}`} onClick={() => setCustomizeOpen((value) => !value)} title="Personnaliser Alya Companion" aria-label="Personnaliser Alya Companion">
+            <button className={`customize-trigger ${customizeOpen ? "active" : ""}`} onClick={() => setCustomizeOpen((value) => !value)} title="Personnaliser ALYA Companion" aria-label="Personnaliser ALYA Companion">
               <Wrench size={18} />
             </button>
             <button
@@ -1128,7 +1342,7 @@ function App() {
             {state?.pokemmo_detected ? "PokeMMO détecté" : "PokeMMO non configuré"}
           </StatusPill>
           {state?.pokemmo_running && <span className="running-warning">PokeMMO est ouvert — modifications bloquées</span>}
-          <span className="app-version">Alya Companion {companionUpdate?.current_version ?? "1.0.0-rc.4"}{companionUpdate?.development_build ? " DEV" : ""}</span>
+          <span className="app-version">ALYA Companion {companionUpdate?.current_version ?? "1.0.0-rc.4"}{companionUpdate?.development_build ? " DEV" : ""}</span>
         </div>
       </aside>
       <div className="sidebar-divider">
@@ -1144,11 +1358,15 @@ function App() {
       </div>
 
       <main
-        className={`content ${tab === "dashboard" ? "dashboard-content" : ""} ${tab === "shinywar" ? "shinywar-content" : ""} ${tab === "surf" ? "surf-content" : ""} ${tab === "theme" ? "theme-content" : ""} ${tab === "rotations" ? "rotations-content" : ""} ${tab === "settings" ? "settings-content" : ""} ${tab === "prepa" || tab === "user-admin" ? "staff-content" : ""} ${EXTERNAL_TABS[tab] ? "external-content" : ""}`}
+        className={`content ${tab === "dashboard" ? "dashboard-content" : ""} ${tab === "shinywar" ? "shinywar-content" : ""} ${tab === "surf" ? "surf-content" : ""} ${tab === "theme" ? "theme-content" : ""} ${tab === "rotations" ? "rotations-content" : ""} ${tab === "gymrerun" ? "gym-rerun-content" : ""} ${tab === "settings" ? "settings-content" : ""} ${tab === "prepa" || tab === "user-admin" ? "staff-content" : ""} ${EXTERNAL_TABS[tab] ? "external-content" : ""}`}
         style={contentBackgroundStyle}
       >
         {tab === "dashboard" && <video className="dashboard-media" src={dashboardBackground} autoPlay loop muted playsInline aria-hidden="true" />}
-        {activeBackgroundAsset?.kind === "video" && activeBackgroundOverlay && <>
+        {gymRerunUsesDynamicVideo && gymRerunBackgroundVideo && <div className="gym-rerun-dynamic-background" aria-hidden="true">
+          <video key={gymRerunBackgroundVideo} src={gymRerunBackgroundVideo} autoPlay loop muted playsInline />
+          <div className="gym-rerun-dynamic-shade" style={{ background: PAGE_BACKGROUND_OVERLAYS.gymrerun }} />
+        </div>}
+        {!gymRerunUsesDynamicVideo && activeBackgroundAsset?.kind === "video" && activeBackgroundOverlay && <>
           <video className="page-background-video" src={activeBackgroundAsset.src} autoPlay loop muted playsInline aria-hidden="true" />
           <div className="page-background-video-shade" style={{ background: activeBackgroundOverlay }} aria-hidden="true" />
         </>}
@@ -1183,7 +1401,7 @@ function App() {
             )}
             {companionUpdate?.update_available && (
               <div className="update-banner">
-                <div><CloudDownload size={19}/><span><strong>Alya Companion {companionUpdate.latest_version}</strong> est disponible.</span></div>
+                <div><CloudDownload size={19}/><span><strong>ALYA Companion {companionUpdate.latest_version}</strong> est disponible.</span></div>
                 <button
                   className="primary compact"
                   disabled={Boolean(busy)}
@@ -1199,7 +1417,7 @@ function App() {
               </div>
             )}
             <div className="hero-card">
-              <div><span className="kicker">Alya Companion</span><h2>Un seul endroit pour tes outils PokeMMO.</h2><p>Thème AlyArchetype, Surf Manager, Vanity, Shiny-War, rotations légendaires, Shinyboard et forum dans une seule application.</p></div>
+              <div><span className="kicker">ALYA Companion</span><h2>Un seul endroit pour tes outils PokeMMO.</h2><p>Thème AlyArchetype, Surf Manager, Vanity, Shiny-War, rotations légendaires, Shinyboard et forum dans une seule application.</p></div>
               <div className="hero-orb"><img src={alyaIcon} alt="" /></div>
             </div>
             <div className="grid three dashboard-modules-grid">
@@ -1224,7 +1442,7 @@ function App() {
               {dashboardModules.includes("vanity") && <article className="card">
                 <div className="card-title"><ImageIcon size={18} /><span>Vanity</span></div>
                 <strong className="big-value">Preview</strong>
-                <p>Prévisualise les cosmétiques directement dans Alya Companion.</p>
+                <p>Prévisualise les cosmétiques directement dans ALYA Companion.</p>
                 <button className="text-button" onClick={() => setTab("vanity")}>Ouvrir Vanity →</button>
               </article>}
               {dashboardModules.includes("shinyboard") && <article className="card">
@@ -1242,7 +1460,7 @@ function App() {
               {dashboardModules.includes("forum") && <article className="card">
                 <div className="card-title"><MessagesSquare size={18} /><span>Forum</span></div>
                 <strong className="big-value">PokeMMO</strong>
-                <p>Consulte le forum officiel sans quitter Alya Companion.</p>
+                <p>Consulte le forum officiel sans quitter ALYA Companion.</p>
                 <button className="text-button" onClick={() => setTab("forum")}>Ouvrir le forum →</button>
               </article>}
               {dashboardModules
@@ -1254,7 +1472,7 @@ function App() {
                   return <article className="card" key={`dashboard-${id}`}>
                     <div className="card-title"><Icon size={18} /><span>{label}</span></div>
                     <strong className="big-value">{label}</strong>
-                    <p>Module Alya Companion.</p>
+                    <p>Module ALYA Companion.</p>
                     <button className="text-button" onClick={() => setTab(id)}>Ouvrir {label} →</button>
                   </article>;
                 })}
@@ -1274,7 +1492,7 @@ function App() {
             {state?.pokemmo_running && <div className="warning-box"><XCircle size={19} /><div><strong>PokeMMO est ouvert.</strong><span>Ferme le jeu avant d'appliquer ou restaurer une ROM.</span></div></div>}
             <div className="card current-surf"><span>Surf actif</span><strong>{activePatch}</strong><small>{state?.surf_state.rom_sha256 ? `SHA-256 : ${state.surf_state.rom_sha256.slice(0, 20)}…` : "Hash non disponible"}</small></div>
             <div className="patch-grid">
-              {patches.length === 0 ? <div className="empty-state"><ShipWheel size={32} /><h3>Patches intégrés introuvables</h3><p>Réinstalle Alya Companion : le catalogue Surf fait désormais partie de l'application.</p></div> : patches.map((patch) => (
+              {patches.length === 0 ? <div className="empty-state"><ShipWheel size={32} /><h3>Patches intégrés introuvables</h3><p>Réinstalle ALYA Companion : le catalogue Surf fait désormais partie de l'application.</p></div> : patches.map((patch) => (
                 <article className={`patch-card ${state?.surf_state.active_patch_id === patch.id ? "selected" : ""}`} key={patch.id}>
                   <div className={`patch-art ${SURF_PREVIEWS[patch.id]?.photo ? "patch-art-photo" : ""}`}>
                     {SURF_PREVIEWS[patch.id] ? (
@@ -1301,22 +1519,23 @@ function App() {
           </section>
         )}
 
-        {tab === "vanity" && <ExternalWebviewPage hostRef={embeddedHostRef} eyebrow="Cosmetics" title="Vanity Preview" description="Le Vanity Booth est chargé directement dans Alya Companion." source="Crimson Core MMO — Vanity Booth" onEditBackground={() => openBackgroundPicker("vanity")} onReload={() => run("vanity-reload", () => api.reloadEmbeddedWebview("vanity"), undefined, false)} />}
-        {tab === "shinyboard" && <ExternalWebviewPage hostRef={embeddedHostRef} eyebrow="Shiny hunting" title="Shinyboard" description="Dashboard Shinyboard intégré directement à Alya Companion." source="shinyboard.net/dashboard" onEditBackground={() => openBackgroundPicker("shinyboard")} onReload={() => run("shinyboard-reload", () => api.reloadEmbeddedWebview("shinyboard"), undefined, false)} />}
-        {tab === "forum" && <ExternalWebviewPage hostRef={embeddedHostRef} eyebrow="Community" title="Forum PokeMMO" description="Le forum officiel PokeMMO intégré dans Alya Companion." source="forums.pokemmo.com" onEditBackground={() => openBackgroundPicker("forum")} onReload={() => run("forum-reload", () => api.reloadEmbeddedWebview("forum"), undefined, false)} />}
+        {tab === "vanity" && <ExternalWebviewPage hostRef={embeddedHostRef} eyebrow="Cosmetics" title="Vanity Preview" description="Le Vanity Booth est chargé directement dans ALYA Companion." source="Crimson Core MMO — Vanity Booth" onEditBackground={() => openBackgroundPicker("vanity")} onReload={() => run("vanity-reload", () => api.reloadEmbeddedWebview("vanity"), undefined, false)} />}
+        {tab === "shinyboard" && <ExternalWebviewPage hostRef={embeddedHostRef} eyebrow="Shiny hunting" title="Shinyboard" description="Dashboard Shinyboard intégré directement à ALYA Companion." source="shinyboard.net/dashboard" onEditBackground={() => openBackgroundPicker("shinyboard")} onReload={() => run("shinyboard-reload", () => api.reloadEmbeddedWebview("shinyboard"), undefined, false)} />}
+        {tab === "forum" && <ExternalWebviewPage hostRef={embeddedHostRef} eyebrow="Community" title="Forum PokeMMO" description="Le forum officiel PokeMMO intégré dans ALYA Companion." source="forums.pokemmo.com" onEditBackground={() => openBackgroundPicker("forum")} onReload={() => run("forum-reload", () => api.reloadEmbeddedWebview("forum"), undefined, false)} />}
         {tab === "shinywar" && <ShinyWarPage userId={auth.session.user.id} onEditBackground={() => openBackgroundPicker("shinywar")} />}
+        {tab === "gymrerun" && <GymRerunPage onEditBackground={() => openBackgroundPicker("gymrerun")} onBackgroundVideoChange={setGymRerunBackgroundVideo} />}
         {tab === "rotations" && <RotationsPage onEditBackground={() => openBackgroundPicker("rotations")} />}
         {tab === "prepa" && canAccessPrepa && <PrepaAlyaPage />}
         {tab === "user-admin" && canManageRoles && <DevUserAdminPage currentUserId={auth.session.user.id} />}
 
         {tab === "settings" && (
           <section className="settings-page">
-            <header className="page-header"><div><p className="eyebrow">Configuration</p><h1>Settings</h1><p>Configure les chemins locaux et les services utilisés par Alya Companion.</p></div></header>
+            <header className="page-header"><div><p className="eyebrow">Configuration</p><h1>Settings</h1><p>Configure les chemins locaux et les services utilisés par ALYA Companion.</p></div></header>
             <div className="settings-card">
               <h2>PokeMMO & ROM</h2>
               <PathField label="Dossier PokeMMO" value={settings.pokemmo_dir} placeholder="C:\\Games\\PokeMMO" onChange={(v) => setSettings((s) => ({ ...s, pokemmo_dir: v }))} onBrowse={() => void pickDirectory("pokemmo_dir")} />
               <PathField label="ROM Pokémon Blanc/Noir" value={settings.rom_path} placeholder="C:\\...\\Pokemon White.nds" onChange={(v) => setSettings((s) => ({ ...s, rom_path: v }))} onBrowse={() => void pickFile("rom_path")} />
-              <p className="settings-note">Les patches Surf et xdelta3 sont intégrés à Alya Companion : l'utilisateur n'a aucune dépendance externe à installer.</p>
+              <p className="settings-note">Les patches Surf et xdelta3 sont intégrés à ALYA Companion : l'utilisateur n'a aucune dépendance externe à installer.</p>
             </div>
             <div className="settings-card">
               <h2>AlyArchetype</h2>
@@ -1329,7 +1548,7 @@ function App() {
             </div>
             <div className="settings-card companion-update-card">
               <div className="settings-card-head">
-                <div><h2>Alya Companion</h2><p className="settings-note">Les prochaines versions peuvent être installées depuis l'application, sans sources, npm ni PowerShell.</p></div>
+                <div><h2>ALYA Companion</h2><p className="settings-note">Les prochaines versions peuvent être installées depuis l'application, sans sources, npm ni PowerShell.</p></div>
                 <button className="ghost" disabled={Boolean(busy)} onClick={() => run("companion-check", refreshCompanionUpdate, "Vérification terminée.", false)}><RefreshCw size={17}/> Vérifier</button>
               </div>
               <div className="fixed-config">
@@ -1352,7 +1571,7 @@ function App() {
                       : "Téléchargement…"
                     : `Installer ${companionUpdate.latest_version}`}
                 </button>
-              ) : companionUpdate?.latest_version ? <StatusPill ok={true}>Alya Companion est à jour</StatusPill> : null}
+              ) : companionUpdate?.latest_version ? <StatusPill ok={true}>ALYA Companion est à jour</StatusPill> : null}
             </div>
             <div className="settings-card"><h2>Vanity</h2><TextField label="URL du booth" value={settings.vanity_url} onChange={(v) => setSettings((s) => ({ ...s, vanity_url: v }))} /></div>
             <div className="action-row"><button className="primary" disabled={Boolean(busy)} onClick={() => void saveSettings()}><Save size={17} /> {busy === "settings" ? "Enregistrement…" : "Enregistrer"}</button></div>
@@ -1381,7 +1600,7 @@ function App() {
       )}
 
       {customizeOpen && (
-        <div className="customizer-panel" role="dialog" aria-label="Personnaliser Alya Companion">
+        <div className="customizer-panel" role="dialog" aria-label="Personnaliser ALYA Companion">
           <div className="customizer-head"><div><span className="eyebrow">Interface</span><h2>Personnaliser</h2></div><button className="icon-button" onClick={() => setCustomizeOpen(false)} title="Fermer"><X size={17}/></button></div>
           <div className="customizer-section">
             <h3>Onglets du volet</h3>
@@ -1494,7 +1713,7 @@ function PageBackgroundPicker({
   return <div className="page-background-picker-backdrop" onMouseDown={onClose}>
     <section className="page-background-picker" role="dialog" aria-modal="true" aria-label={`Choisir le fond de ${tabLabel}`} onMouseDown={(event) => event.stopPropagation()}>
       <div className="page-background-picker-head">
-        <div><p className="eyebrow">Apparence</p><h2>Fond · {tabLabel}</h2><p>Choisis un fond parmi les assets intégrés à Alya Companion.</p></div>
+        <div><p className="eyebrow">Apparence</p><h2>Fond · {tabLabel}</h2><p>Choisis un fond parmi les assets intégrés à ALYA Companion.</p></div>
         <button type="button" className="icon-button" onClick={onClose} title="Fermer" aria-label="Fermer"><X size={17}/></button>
       </div>
       <div className="page-background-grid">

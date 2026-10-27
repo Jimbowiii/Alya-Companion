@@ -2,6 +2,20 @@ import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Cloud, LogOut, Upload, UserRound, X } from "lucide-react";
 import type { AlyaProfile } from "./auth";
 
+
+function AccountAvatarImage({ src, updatedAt }: { src: string | null; updatedAt: string }) {
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [src, updatedAt]);
+
+  if (!src || failed) return <UserRound size={34}/>;
+
+  const resolved = `${src}${src.includes("?") ? "&" : "?"}v=${encodeURIComponent(updatedAt)}`;
+  return <img src={resolved} alt="Avatar" onError={() => setFailed(true)} />;
+}
+
 type AccountModalProps = {
   email: string;
   profile: AlyaProfile;
@@ -41,7 +55,7 @@ export function AccountModal({ email, profile, error, onClose, onUpdateUsername,
   };
 
   return <div className="account-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-    <section className="account-modal" role="dialog" aria-modal="true" aria-label="Compte Alya Companion">
+    <section className="account-modal" role="dialog" aria-modal="true" aria-label="Compte ALYA Companion">
       <header className="account-modal-head">
         <div><p className="eyebrow">Alya Account</p><h2>Mon compte</h2></div>
         <button className="icon-button" onClick={onClose} aria-label="Fermer"><X size={17}/></button>
@@ -49,7 +63,7 @@ export function AccountModal({ email, profile, error, onClose, onUpdateUsername,
 
       <div className="account-profile-row">
         <button className="account-avatar-button" onClick={() => fileRef.current?.click()} title="Changer l'avatar">
-          {profile.avatar_url ? <img src={`${profile.avatar_url}${profile.avatar_url.includes("?") ? "&" : "?"}v=${encodeURIComponent(profile.updated_at)}`} alt="Avatar"/> : <UserRound size={34}/>} 
+          {<AccountAvatarImage src={profile.avatar_url} updatedAt={profile.updated_at} />} 
           <span><Upload size={13}/></span>
         </button>
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={(event) => void chooseAvatar(event.target.files?.[0])}/>

@@ -1,8 +1,8 @@
 [package]
 name = "alya-companion"
-version = "1.0.0-rc.9"
+version = "1.0.0-rc.10"
 description = "A lightweight companion for AlyArchetype, Surf patches and vanity previews."
-authors = ["Alya Companion"]
+authors = ["ALYA Companion"]
 edition = "2021"
 
 [lib]

@@ -133,7 +133,11 @@ export function useAlyaAuth() {
       void refreshProfile(session).catch((profileError) => setError(String(profileError)));
     };
     window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
+    window.addEventListener("alya-profile-refresh", handleFocus);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("alya-profile-refresh", handleFocus);
+    };
   }, [session, refreshProfile]);
 
   const runAuth = useCallback(async <T,>(action: () => Promise<T>) => {

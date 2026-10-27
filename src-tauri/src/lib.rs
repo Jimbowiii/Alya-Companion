@@ -456,7 +456,7 @@ async fn github_latest_companion_release() -> Result<GitHubRelease, String> {
                 _ => a.tag_name.cmp(&b.tag_name),
             }
         })
-        .ok_or_else(|| "Aucune release Alya Companion disponible sur GitHub".to_string())
+        .ok_or_else(|| "Aucune release ALYA Companion disponible sur GitHub".to_string())
 }
 
 async fn latest_release() -> Result<(GitHubRelease, GitHubAsset), String> {
@@ -629,7 +629,7 @@ fn surf_resources_dir(app: &AppHandle) -> Result<PathBuf, String> {
         return Ok(dev);
     }
 
-    Err("Les ressources Surf intÃƒÂ©grÃƒÂ©es ÃƒÂ  Alya Companion sont introuvables.".into())
+    Err("Les ressources Surf intÃƒÂ©grÃƒÂ©es ÃƒÂ  ALYA Companion sont introuvables.".into())
 }
 
 fn load_builtin_surf_manifest(app: &AppHandle) -> Result<(PatchManifest, PathBuf), String> {
@@ -835,13 +835,13 @@ async fn show_embedded_webview(app: AppHandle, kind: String, x: f64, y: f64, wid
     let main_webview = app
         .get_webview("main")
         .or_else(|| app.webviews().into_values().find(|webview| !embedded_labels().contains(&webview.label())))
-        .ok_or_else(|| "FenÃƒÂªtre principale Alya Companion introuvable".to_string())?;
+        .ok_or_else(|| "FenÃƒÂªtre principale ALYA Companion introuvable".to_string())?;
     let window = main_webview.window();
 
     let builder = WebviewBuilder::new(label, WebviewUrl::External(url));
     window
         .add_child(builder, position, size)
-        .map_err(|e| format!("Impossible d'intÃƒÂ©grer {kind} dans Alya Companion: {e}"))?;
+        .map_err(|e| format!("Impossible d'intÃƒÂ©grer {kind} dans ALYA Companion: {e}"))?;
     Ok(())
 }
 
@@ -901,7 +901,7 @@ async fn install_companion_update(app: AppHandle) -> Result<String, String> {
     let release = github_latest_companion_release().await?;
     let status = companion_update_status_from_release(&release);
     if !status.update_available {
-        return Ok(format!("Alya Companion {} est dÃƒÂ©jÃƒÂ  ÃƒÂ  jour.", status.current_version));
+        return Ok(format!("ALYA Companion {} est dÃƒÂ©jÃƒÂ  ÃƒÂ  jour.", status.current_version));
     }
 
     let installer = release
@@ -1035,5 +1035,5 @@ pub fn run() {
             install_companion_update,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running Alya Companion");
+        .expect("error while running ALYA Companion");
 }

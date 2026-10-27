@@ -40,20 +40,20 @@ export function AuthGate(props: AuthGateProps) {
       if (props.recoveryMode) {
         if (password.length < 8) throw new Error("Le mot de passe doit contenir au moins 8 caractères.");
         await props.onSetNewPassword(password);
-        setNotice("Mot de passe modifié. Tu peux continuer dans Alya Companion.");
+        setNotice("Mot de passe modifié. Tu peux continuer dans ALYA Companion.");
         return;
       }
 
       if (mode === "signin") {
         await props.onSignIn(email, password);
       } else if (mode === "signup") {
-        if (!username.trim()) throw new Error("Choisis un pseudo Alya Companion.");
+        if (!username.trim()) throw new Error("Choisis un pseudo ALYA Companion.");
         if (password.length < 8) throw new Error("Le mot de passe doit contenir au moins 8 caractères.");
         const result = await props.onSignUp(email, password, username) as { session?: unknown } | undefined;
         if (!result?.session) setNotice("Compte créé. Confirme ton email depuis ton téléphone ou ton PC, puis reviens ici et connecte-toi.");
       } else {
         await props.onReset(email);
-        setNotice("Email de récupération envoyé. Pour la récupération du mot de passe, ouvre le lien sur le PC où Alya Companion est installé.");
+        setNotice("Email de récupération envoyé. Pour la récupération du mot de passe, ouvre le lien sur le PC où ALYA Companion est installé.");
       }
     } catch {
       // L'erreur détaillée est affichée depuis le hook d'authentification.
@@ -65,7 +65,7 @@ export function AuthGate(props: AuthGateProps) {
   if (!props.configured) {
     return <main className="auth-shell">
       <section className="auth-card auth-config-card">
-        <img className="auth-logo" src={alyaIcon} alt="Alya Companion" />
+        <img className="auth-logo" src={alyaIcon} alt="ALYA Companion" />
         <p className="eyebrow">Alya Account</p>
         <h1>Configuration Supabase requise</h1>
         <p>Le système de comptes est installé, mais il faut renseigner ton projet Supabase avant de pouvoir se connecter.</p>
@@ -85,18 +85,18 @@ export function AuthGate(props: AuthGateProps) {
   return <main className="auth-shell">
     <section className="auth-card">
       <div className="auth-brand-row">
-        <img className="auth-logo" src={alyaIcon} alt="Alya Companion" />
-        <div><p className="eyebrow">Alya Companion</p><h1>{props.recoveryMode ? "Nouveau mot de passe" : mode === "signup" ? "Créer ton compte" : mode === "reset" ? "Récupérer ton compte" : "Bienvenue"}</h1></div>
+        <img className="auth-logo" src={alyaIcon} alt="ALYA Companion" />
+        <div><p className="eyebrow">ALYA Companion</p><h1>{props.recoveryMode ? "Nouveau mot de passe" : mode === "signup" ? "Créer ton compte" : mode === "reset" ? "Récupérer ton compte" : "Bienvenue"}</h1></div>
       </div>
 
       <p className="auth-lead">
         {props.recoveryMode
-          ? "Choisis un nouveau mot de passe pour ton compte Alya Companion."
+          ? "Choisis un nouveau mot de passe pour ton compte ALYA Companion."
           : mode === "signup"
             ? "Crée ton identité Alya et synchronise tes données entre tes PC."
             : mode === "reset"
               ? "Entre ton email et Alya t'enverra un lien de récupération."
-              : "Connecte-toi pour ouvrir Alya Companion et retrouver ta synchronisation cloud."}
+              : "Connecte-toi pour ouvrir ALYA Companion et retrouver ta synchronisation cloud."}
       </p>
 
       {props.error && <div className="auth-alert error"><CircleAlert size={17}/><span>{props.error.replace(/^Error:\s*/, "")}</span></div>}
