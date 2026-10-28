@@ -302,7 +302,6 @@ export function GymRerunPage({ onEditBackground, onBackgroundVideoChange }: GymR
       {view === "team" ? <>
         {team.preparation?.length ? <div className="gym-preparation"><strong>Préparation consommables</strong><div>{team.preparation.map((item) => <span key={item}>{item}</span>)}</div></div> : null}
         <div className="gym-pokemon-grid">{team.pokemon.map((build, index) => <PokemonBuildCard key={`${build.name}-${index}`} build={build} index={index}/>)}</div>
-        {team.sourceNote && <div className="gym-source-note"><CircleAlert size={15}/><span>{team.sourceNote}</span></div>}
       </> : <PathView
         team={team}
         progress={progress[team.id] ?? []}

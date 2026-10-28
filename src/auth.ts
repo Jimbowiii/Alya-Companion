@@ -29,7 +29,7 @@ export type CloudPreferences = Pick<
   "vanity_url" | "accent_color" | "hidden_tabs" | "tab_order" | "dashboard_modules"
 >;
 
-export type AlyaRole = "user" | "Admin" | "DEV";
+export type AlyaRole = "user" | "Admin" | "Gourou" | "DEV";
 
 export type AlyaBadge = {
   id: string;
@@ -38,6 +38,20 @@ export type AlyaBadge = {
   color: string;
   image_url: string | null;
   created_at: string;
+};
+
+export type AlyaDashboardEvent = {
+  id: string;
+  title: string;
+  body: string;
+  title_color: string;
+  background_url: string | null;
+  background_path: string | null;
+  ends_at: string;
+  active: boolean;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export type AlyaProfile = {
@@ -665,6 +679,89 @@ export async function setAlyaUserRole(userId: string, role: AlyaRole) {
     new_role: role,
   });
   if (error) throw error;
+}
+
+export async function getAlyaDashboardEvent(): Promise<AlyaDashboardEvent | null> {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("alya_dashboard_events")
+    .select("id, title, body, title_color, background_url, background_path, ends_at, active, updated_by, created_at, updated_at")
+    .eq("id", "global")
+    .maybeSingle();
+  if (error) {
+    if (["42P01", "PGRST205"].includes((error as { code?: string }).code ?? "")) return null;
+    throw error;
+  }
+  return data ? data as AlyaDashboardEvent : null;
+}
+
+export async function saveAlyaDashboardEvent(values: {
+  title: string;
+  body: string;
+  title_color: string;
+  background_url: string | null;
+  background_path: string | null;
+  ends_at: string;
+}): Promise<AlyaDashboardEvent> {
+  const client = requireSupabase();
+  const { data, error } = await client.rpc("set_alya_dashboard_event", {
+    p_title: values.title,
+    p_body: values.body,
+    p_title_color: values.title_color,
+    p_background_url: values.background_url,
+    p_background_path: values.background_path,
+    p_ends_at: values.ends_at,
+  });
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) throw new Error("Supabase n'a pas retourné l'événement publié.");
+  return row as AlyaDashboardEvent;
+}
+
+export async function clearAlyaDashboardEvent() {
+  const client = requireSupabase();
+  const { error } = await client.rpc("clear_alya_dashboard_event");
+  if (error) throw error;
+}
+
+export async function uploadAlyaDashboardEventImage(file: File) {
+  const client = requireSupabase();
+  if (!file.type.startsWith("image/")) throw new Error("Sélectionne une image pour le fond de l'événement.");
+  if (file.size > 8 * 1024 * 1024) throw new Error("L'image de fond doit faire moins de 8 Mo.");
+
+  const extension = (file.name.split(".").pop() || file.type.split("/").pop() || "png")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "") || "png";
+  const path = `dashboard/${Date.now()}-${crypto.randomUUID()}.${extension}`;
+  const { error: uploadError } = await client.storage.from("alya-events").upload(path, file, {
+    upsert: false,
+    contentType: file.type,
+    cacheControl: "3600",
+  });
+  if (uploadError) throw new Error(`Upload de l'image événement impossible : ${uploadError.message}`);
+
+  const { data } = client.storage.from("alya-events").getPublicUrl(path);
+  return { publicUrl: data.publicUrl, path };
+}
+
+export async function deleteAlyaDashboardEventImage(path: string) {
+  const client = requireSupabase();
+  const cleanPath = path.trim();
+  if (!cleanPath) return;
+  const { error } = await client.storage.from("alya-events").remove([cleanPath]);
+  if (error) throw error;
+}
+
+export function subscribeAlyaDashboardEvent(onChange: () => void) {
+  const client = requireSupabase();
+  const channel = client
+    .channel("alya-dashboard-event")
+    .on("postgres_changes", { event: "*", schema: "public", table: "alya_dashboard_events" }, () => onChange())
+    .subscribe();
+
+  return () => {
+    void client.removeChannel(channel);
+  };
 }
 
 export async function loadCloudShinyWar(userId: string): Promise<unknown[] | null> {

@@ -1,5 +1,128 @@
 # Changelog
 
+## [1.0.0-rc.11] - 2026-10-28
+
+RC11 agrandit fortement ALYA Companion avec de nouveaux modules de jeu, des outils communautaires, une meilleure organisation de la sidebar et plusieurs automatisations utiles au quotidien.
+
+### 👑 Nouveau rôle GOUROU
+
+- Ajout du rôle `GOUROU` dans la hiérarchie des comptes : `DEV > GOUROU > ADMIN > user`.
+- Le rôle GOUROU dispose des outils avancés de gestion et de préparation accessibles aux DEV.
+- Un GOUROU peut attribuer uniquement les rôles `ADMIN` et `user`.
+- Un GOUROU ne peut pas attribuer `DEV` ou `GOUROU` et ne peut pas modifier les comptes protégés de ces deux niveaux.
+- Les restrictions sont appliquées côté Supabase et pas uniquement dans l'interface.
+- Nouveau style de rôle : GOUROU rouge vif et ADMIN vert fluo.
+- La liste des utilisateurs respecte désormais la hiérarchie des rôles.
+
+### 🏅 Gestion des badges améliorée
+
+- Remplacement des longues listes de badges par un volet déroulant compact pour chaque joueur.
+- Le volet permet d'attribuer, retirer et réordonner les badges sans faire déborder les lignes utilisateurs.
+- Correction du niveau d'empilement afin que le volet ouvert reste toujours au premier plan.
+
+### 📣 Événements globaux sur le Dashboard
+
+- Ajout d'un éditeur d'événement accessible aux DEV et GOUROU.
+- Un événement peut contenir un titre, un texte libre, une couleur de titre, une image de fond et une date/heure de fin.
+- Le Dashboard de tous les utilisateurs affiche automatiquement l'événement actif.
+- Ajout d'un compte à rebours en temps réel au format `3j 5h 43min 39sec`.
+- L'événement disparaît automatiquement lorsqu'il expire.
+- Synchronisation via Supabase Realtime avec rafraîchissement de secours.
+- Les liens HTTP/HTTPS présents dans le texte de l'événement sont automatiquement cliquables et s'ouvrent dans le navigateur externe.
+
+### 🌱 Nouvel onglet Baies
+
+- Ajout d'un module dédié à l'autonomie Mépo avec six emplacements de personnages : 2 Mépo, 2 Ceriz, 1 Pécha et 1 Fraive.
+- Les noms des personnages sont personnalisables et sauvegardés localement.
+- Affichage des besoins en graines par personnage et du stock global nécessaire pour une tournée complète.
+- Total global affiché : 2 496 graines.
+- Ajout d'un fond dédié à la culture de baies.
+- Refonte responsive et augmentation générale de la taille des textes pour une meilleure lisibilité.
+
+### ⏳ Timers de culture et notifications Windows
+
+- Chaque personnage dispose d'un chrono de culture individuel persistant.
+- Mode `8h` :
+  - Mépo : arrosage à 8h, arrosage à 16h, récolte à 20h.
+  - Ceriz / Pécha / Fraive : arrosage à 8h, récolte à 16h.
+- Mode `10h` : un seul arrosage à 10h pour toutes les baies, puis récolte à 20h pour Mépo et 16h pour les autres.
+- Le mode 8h/10h est global et sauvegardé localement.
+- Les timers continuent d'être surveillés même lorsque l'utilisateur quitte l'onglet Baies.
+- Ajout des notifications Windows natives aux checkpoints.
+- Notifications d'arrosage : `Arrose tes baies <baie> toi !`.
+- Notifications de récolte : `Récolte tes baies <baie> toi !`.
+- Si ALYA était fermé lors d'un checkpoint, l'étape dépassée est détectée au prochain lancement.
+
+### ⚔️ Nouvel onglet Raids
+
+- Ajout d'un module Raids natif avec six boss : Heatran, Cresselia, Meloetta, Cobaltium, Terrakium et Viridium.
+- Chaque raid dispose d'une fiche d'escouades détaillant les quatre joueurs, Pokémon, objets, talents, natures, IV, EV et attaques.
+- Ajout d'un plan de combat tour par tour avec les actions des quatre joueurs affichées côte à côte.
+- Les tours peuvent être cochés et la progression est conservée localement.
+- Ajout d'un fond dédié à l'onglet Raids avec rendu plein écran, centré et sans répétition.
+
+### 🧰 Nouvelle bibliothèque Mods
+
+- Ajout d'un onglet Mods natif pour gérer les mods PokeMMO directement depuis ALYA.
+- Téléchargement et installation directement dans `PokeMMO/data/mods` sans passage manuel par le dossier Téléchargements.
+- Gestion des fichiers `.mod` et `.zip`.
+- Téléchargement sécurisé via fichier temporaire `.part` avant installation finale.
+- Barre de progression et état `Installé / Non installé / Partiel`.
+- Gestion des packs multi-fichiers, dont les packs nécessitant plusieurs parties.
+- Support des téléchargements publics MediaFire, Google Drive, MEGA et HTTPS direct lorsque la ressource est publiquement accessible.
+- Ajout d'un bouton d'import de mod local.
+- Ajout d'un bouton pour ouvrir directement le dossier Mods.
+- Les modifications du dossier Mods sont bloquées lorsque PokeMMO est ouvert.
+- Ajout de six mods ALYA embarqués et installables hors ligne, avec vérification SHA-256 avant copie.
+- Ajout d'un fond dédié à la bibliothèque Mods.
+- Refonte des boutons de l'en-tête Mods pour respecter la direction artistique ALYA.
+
+### 🌐 Nouveaux onglets Web
+
+- Ajout de Poképédia et Pokébip dans des WebViews Tauri intégrées.
+- Correction du cycle de création et d'affichage des WebViews enfants.
+- Correction des redirections internes afin que les pages puissent naviguer sans être renvoyées continuellement à leur URL initiale.
+- Ajout d'un User-Agent compatible WebView2 pour améliorer la compatibilité des sites.
+- Ajout des contrôles de rechargement et du système de fond personnalisable.
+
+### 📺 Nouvel onglet Stream configurable
+
+- Ajout d'un onglet Stream basé sur une URL configurable dans `src/config/stream.ts`.
+- L'URL peut être changée sans modifier le backend Rust.
+- Ajout des boutons Recharger et Ouvrir dans le navigateur.
+- Ajout d'une mini-fenêtre WebView séparée, redimensionnable et toujours au premier plan.
+- Refonte de la page Stream afin que la WebView utilise toute la largeur et toute la hauteur disponibles.
+- Validation des URL HTTP/HTTPS côté backend.
+
+### 🗂️ Sidebar par catégories
+
+- Réorganisation de la sidebar pour mieux supporter le nombre croissant de modules.
+- Dashboard reste accessible séparément en haut.
+- Catégorie `Web` : Shinyboard, Forum, Vanity, Poképédia, Pokébip, Stream.
+- Catégorie `Utilities` : Mods, Surf Manager, AlyArchetype, Rotations, Raids.
+- Catégorie `Make Big Money` : Gym Rerun, Baies.
+- Catégorie `Shiny-Wars` : Shiny-War.
+- Les catégories peuvent être ouvertes ou repliées et leur état est mémorisé localement.
+- L'ouverture d'un module depuis le Dashboard ouvre automatiquement sa catégorie.
+- Ajout d'une personnalisation de l'ordre vertical des catégories par glisser-déposer ou flèches.
+- Dashboard reste verrouillé tout en haut.
+- Les réglages de visibilité et les modules Dashboard existants restent compatibles.
+
+### 🎨 Interface et fonds
+
+- Ajout de nouveaux fonds dédiés pour Baies, Raids et Mods.
+- Correction de plusieurs problèmes de répétition, largeur maximale et cadrage des backgrounds.
+- Harmonisation de plusieurs contrôles avec la direction artistique sombre et dorée d'ALYA.
+- Amélioration générale de la lisibilité sur les nouveaux modules.
+
+### 🔧 Stabilité et publication
+
+- Conservation des correctifs d'authentification, Supabase, CSP, updater et avatars Discord des RC précédentes.
+- Conservation du système de notifications Tauri ajouté pour les cultures.
+- Conservation des systèmes de rôles, badges image, événements Dashboard et WebViews intégrées.
+- Nettoyage des anciens overlays et backups de développement avant publication.
+- Préparation d'une nouvelle release `1.0.0-rc.11` afin de ne pas réutiliser la version RC10 déjà publiée.
+
 ## [1.0.0-rc.10] - 2026-10-27
 
 RC10 est une mise à jour majeure d'**ALYA Companion** centrée sur l'identité visuelle, les profils joueurs et l'arrivée du nouveau module **Gym Rerun**.

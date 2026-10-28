@@ -1,6 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { ChangeEvent, CSSProperties } from "react";
-import type { LucideIcon } from "lucide-react";
+import { Tv as StreamTvIcon } from "lucide-react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState } from "react";
+import type {
+  ChangeEvent,
+  CSSProperties } from "react";
+import type { LucideIcon,
+  Tv,
+} from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
   ArrowLeft,
@@ -18,6 +27,9 @@ import {
   Gem,
   Image as ImageIcon,
   MessagesSquare,
+  BookOpen,
+  Newspaper,
+  Megaphone,
   Minus,
   RefreshCw,
   RotateCcw,
@@ -28,8 +40,10 @@ import {
   Shield,
   ShipWheel,
   Sparkles,
+  Sprout,
   TimerReset,
   Trophy,
+  Swords,
   Table2,
   UserRound,
   Users,
@@ -47,6 +61,12 @@ import type { AppState, CompanionUpdateStatus, Settings, SurfPatch, ThemeStatus 
 import { AuthGate } from "./AuthGate";
 import { AccountModal } from "./AccountModal";
 import { GymRerunPage } from "./GymRerunPage";
+import { RaidsPage } from "./RaidsPage";
+import { ModsPage } from "./ModsPage";
+import { StreamPage } from "./StreamPage";
+import { DashboardEventAdminPanel, DashboardEventWidget } from "./DashboardEvent";
+import { BerriesPage } from "./BerriesPage";
+import { BerriesTimerWatcher } from "./BerriesTimerWatcher";
 import { useAlyaAuth } from "./useAlyaAuth";
 import { cloudPreferencesFromSettings, createAlyaBadge, deleteAlyaBadge, listAlyaBadges, listAlyaProfiles, loadCloudShinyWar, saveCloudPreferences, saveCloudShinyWar, setAlyaUserBadge, setAlyaUserBadgeOrder, setAlyaUserRole, uploadAlyaBadgeImage } from "./auth";
 import type { AlyaBadge, AlyaProfile, AlyaRole } from "./auth";
@@ -58,6 +78,9 @@ import rotationsBackground from "./assets/rotations-background.png";
 import shinyWarBackground from "./assets/shiny-war-background.png";
 import sidebarBackground from "./assets/sidebar-background.png";
 import surfManagerBackground from "./assets/surf-manager-background.png";
+import berriesBackground from "./assets/berries-background.png";
+import raidsBackground from "./assets/raids-background.png";
+import modsBackground from "./assets/mods-background.png";
 import surfTogekissShiny from "./assets/surf-previews/togekiss-shiny.png";
 import surfKyogreShiny from "./assets/surf-previews/kyogre-shiny.png";
 import surfPrimalKyogreShiny from "./assets/surf-previews/primal-kyogre-shiny.png";
@@ -66,13 +89,15 @@ import surfLugiaShiny from "./assets/surf-previews/lugia-shiny.png";
 import surfLugiaNormal from "./assets/surf-previews/lugia-normal.png";
 import surfLatiasShiny from "./assets/surf-previews/latias-shiny.png";
 
+import SidebarGroupedNav from "./SidebarGroupedNav";
+import SidebarCategoryCustomizer from "./SidebarCategoryCustomizer";
 const EMPTY_SETTINGS: Settings = {
   pokemmo_dir: "",
   rom_path: "",
   vanity_url: "https://www.crimsoncoremmo.co.uk/vanity-booth",
   accent_color: "#9b7bdf",
   hidden_tabs: [],
-  tab_order: ["dashboard", "theme", "surf", "vanity", "shinyboard", "shinywar", "gymrerun", "rotations", "forum"],
+  tab_order: ["dashboard", "theme", "surf", "vanity", "shinyboard", "shinywar", "gymrerun", "raids", "berries", "mods", "stream", "rotations", "pokepedia", "pokebip", "forum"],
   dashboard_modules: ["theme", "surf", "rotations"],
 };
 
@@ -84,7 +109,13 @@ const NAV_ITEMS = [
   ["shinyboard", "Shinyboard", Gem],
   ["shinywar", "Shiny-War", Table2],
   ["gymrerun", "Gym Rerun", Trophy],
+  ["raids", "Raids", Swords],
+  ["berries", "Baies", Sprout],
+  ["mods", "Mods", CloudDownload],
+  ["stream", "Stream", StreamTvIcon],
   ["rotations", "Rotations", TimerReset],
+  ["pokepedia", "Poképédia", BookOpen],
+  ["pokebip", "Pokébip", Newspaper],
   ["forum", "Forum", MessagesSquare],
 ] as const;
 
@@ -100,7 +131,10 @@ type PageBackgroundAssetId =
   | "rotations"
   | "external-tabs"
   | "sidebar"
-  | "dashboard-video";
+  | "dashboard-video"
+  | "berries"
+  | "raids"
+  | "mods";
 
 type PageBackgroundAsset = {
   id: PageBackgroundAssetId;
@@ -119,6 +153,9 @@ const PAGE_BACKGROUND_ASSETS: readonly PageBackgroundAsset[] = [
   { id: "external-tabs", label: "Outils externes", src: externalTabsBackground, kind: "image" },
   { id: "sidebar", label: "Sidebar", src: sidebarBackground, kind: "image" },
   { id: "dashboard-video", label: "Dashboard animé", src: dashboardBackground, kind: "video" },
+  { id: "berries", label: "Baies · coucher de soleil", src: berriesBackground, kind: "image" },
+  { id: "raids", label: "Raids · arène céleste", src: raidsBackground, kind: "image" },
+  { id: "mods", label: "Mods · panorama fantasy", src: modsBackground, kind: "image" },
 ] as const;
 
 const DEFAULT_PAGE_BACKGROUNDS: Record<CustomizableBackgroundTab, PageBackgroundAssetId> = {
@@ -128,7 +165,13 @@ const DEFAULT_PAGE_BACKGROUNDS: Record<CustomizableBackgroundTab, PageBackground
   shinyboard: "external-tabs",
   shinywar: "shiny-war",
   gymrerun: "rotations",
+  raids: "raids",
+  berries: "berries",
+  mods: "mods",
+  stream: "external-tabs",
   rotations: "rotations",
+  pokepedia: "external-tabs",
+  pokebip: "external-tabs",
   forum: "external-tabs",
 };
 
@@ -139,7 +182,13 @@ const PAGE_BACKGROUND_OVERLAYS: Record<CustomizableBackgroundTab, string> = {
   shinyboard: "linear-gradient(rgba(5, 6, 10, .34), rgba(5, 6, 10, .56))",
   shinywar: "linear-gradient(rgba(7, 8, 18, .28), rgba(7, 8, 18, .44))",
   gymrerun: "linear-gradient(rgba(7, 9, 16, .30), rgba(7, 9, 16, .52))",
+  raids: "linear-gradient(rgba(5, 8, 16, .26), rgba(5, 8, 16, .50))",
+  berries: "linear-gradient(rgba(5, 10, 9, .30), rgba(5, 8, 10, .55))",
+  mods: "linear-gradient(rgba(5, 7, 12, .30), rgba(5, 7, 12, .56))",
+  stream: "linear-gradient(rgba(5, 6, 10, .30), rgba(5, 6, 10, .54))",
   rotations: "linear-gradient(rgba(8, 12, 24, .28), rgba(8, 12, 24, .48))",
+  pokepedia: "linear-gradient(rgba(5, 6, 10, .30), rgba(5, 6, 10, .52))",
+  pokebip: "linear-gradient(rgba(5, 6, 10, .30), rgba(5, 6, 10, .52))",
   forum: "linear-gradient(rgba(5, 6, 10, .34), rgba(5, 6, 10, .56))",
 };
 
@@ -150,7 +199,13 @@ function isCustomizableBackgroundTab(tab: Tab): tab is CustomizableBackgroundTab
     || tab === "shinyboard"
     || tab === "shinywar"
     || tab === "gymrerun"
+    || tab === "raids"
+    || tab === "berries"
+    || tab === "stream"
+    || tab === "mods"
     || tab === "rotations"
+    || tab === "pokepedia"
+    || tab === "pokebip"
     || tab === "forum";
 }
 
@@ -187,6 +242,8 @@ const DASHBOARD_MODULES = NAV_ITEMS.filter(
 const EXTERNAL_TABS: Partial<Record<Tab, EmbeddedWebviewKind>> = {
   vanity: "vanity",
   shinyboard: "shinyboard",
+  pokepedia: "pokepedia",
+  pokebip: "pokebip",
   forum: "forum",
 };
 
@@ -478,13 +535,15 @@ function ShinyWarPage({ userId, onEditBackground }: { userId: string; onEditBack
 
 
 function RoleBadge({ role }: { role: AlyaRole }) {
-  return <span className={`role-badge role-${role.toLowerCase()}`}>{role}</span>;
+  const label = role === "Gourou" ? "GOUROU" : role;
+  return <span className={`role-badge role-${role.toLowerCase()}`}>{label}</span>;
 }
 
 const ALYA_ROLE_SORT_ORDER: Record<AlyaRole, number> = {
   DEV: 0,
-  Admin: 1,
-  user: 2,
+  Gourou: 1,
+  Admin: 2,
+  user: 3,
 };
 
 function sortProfilesByRole(profiles: AlyaProfile[]) {
@@ -655,7 +714,7 @@ function PrepaAlyaPage() {
   </section>;
 }
 
-function DevUserAdminPage({ currentUserId }: { currentUserId: string }) {
+function DevUserAdminPage({ currentUserId, currentUserRole }: { currentUserId: string; currentUserRole: AlyaRole }) {
   const [profiles, setProfiles] = useState<AlyaProfile[]>([]);
   const [badges, setBadges] = useState<AlyaBadge[]>([]);
   const [search, setSearch] = useState("");
@@ -669,6 +728,7 @@ function DevUserAdminPage({ currentUserId }: { currentUserId: string }) {
   const [badgeImagePreview, setBadgeImagePreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [adminView, setAdminView] = useState<"users" | "event">("users");
 
   const refresh = async () => {
     setLoading(true); setError(null);
@@ -690,13 +750,25 @@ function DevUserAdminPage({ currentUserId }: { currentUserId: string }) {
     return () => URL.revokeObjectURL(objectUrl);
   }, [badgeImageFile]);
 
+  const canEditRole = (profile: AlyaProfile) => {
+    if (profile.id === currentUserId) return false;
+    if (currentUserRole === "DEV") return true;
+    if (currentUserRole === "Gourou") return profile.role === "Admin" || profile.role === "user";
+    return false;
+  };
+
+  const assignableRoles: AlyaRole[] = currentUserRole === "DEV"
+    ? ["user", "Admin", "Gourou", "DEV"]
+    : ["user", "Admin"];
+
   const changeRole = async (profile: AlyaProfile, role: AlyaRole) => {
-    if (profile.id === currentUserId || profile.role === role) return;
+    if (!canEditRole(profile) || profile.role === role) return;
+    if (currentUserRole === "Gourou" && (role === "DEV" || role === "Gourou")) return;
     setBusyUser(profile.id); setError(null); setNotice(null);
     try {
       await setAlyaUserRole(profile.id, role);
       setProfiles((current) => current.map((item) => item.id === profile.id ? { ...item, role, updated_at: new Date().toISOString() } : item));
-      setNotice(`${profile.username} est maintenant ${role}.`);
+      setNotice(`${profile.username} est maintenant ${role === "Gourou" ? "GOUROU" : role}.`);
     } catch (err) { setError(String(err)); }
     finally { setBusyUser(null); }
   };
@@ -784,10 +856,17 @@ function DevUserAdminPage({ currentUserId }: { currentUserId: string }) {
 
   const filtered = sortProfilesByRole(profiles.filter((profile) => profile.username.toLocaleLowerCase("fr-FR").includes(search.trim().toLocaleLowerCase("fr-FR"))));
 
+  if (adminView === "event") {
+    return <DashboardEventAdminPanel onBack={() => setAdminView("users")} />;
+  }
+
   return <section className="staff-page dev-users-page">
     <header className="page-header">
-      <div><p className="eyebrow">DEV</p><h1>Gestion utilisateurs</h1><p>Gère les rôles et les badges Alya. Seul un DEV peut effectuer ces changements.</p></div>
-      <button className="ghost" onClick={() => void refresh()} disabled={loading}><RefreshCw size={17}/> Actualiser</button>
+      <div><p className="eyebrow">DEV · GOUROU</p><h1>Gestion utilisateurs</h1><p>Gère les rôles, les badges et les annonces globales ALYA selon ton niveau d'accès.</p></div>
+      <div className="page-header-actions">
+        <button className="ghost staff-event-tab-button" onClick={() => setAdminView("event")}><Megaphone size={17}/> Événement Dashboard</button>
+        <button className="ghost" onClick={() => void refresh()} disabled={loading}><RefreshCw size={17}/> Actualiser</button>
+      </div>
     </header>
 
     <div className="dev-badge-manager">
@@ -830,44 +909,57 @@ function DevUserAdminPage({ currentUserId }: { currentUserId: string }) {
         const self = profile.id === currentUserId;
         return <div className="staff-user-row dev-user-row" key={profile.id}>
           <ProfileAvatar profile={profile}/>
-          <span className="staff-user-main"><strong>{profile.username}</strong><small>{self ? "Ton compte DEV" : "Compte Alya"}</small></span>
+          <span className="staff-user-main"><strong>{profile.username}</strong><small>{self ? `Ton compte ${currentUserRole === "Gourou" ? "GOUROU" : currentUserRole}` : "Compte ALYA"}</small></span>
           <RoleBadge role={profile.role}/>
           <label className="role-select-wrap">
             <span>Rôle</span>
-            <select value={profile.role} disabled={self || busyUser === profile.id} onChange={(event) => void changeRole(profile, event.target.value as AlyaRole)}>
-              <option value="user">user</option>
-              <option value="Admin">Admin</option>
-              <option value="DEV">DEV</option>
+            <select
+              value={profile.role}
+              disabled={!canEditRole(profile) || busyUser === profile.id}
+              onChange={(event) => void changeRole(profile, event.target.value as AlyaRole)}
+            >
+              {!assignableRoles.includes(profile.role) && <option value={profile.role}>{profile.role === "Gourou" ? "GOUROU" : profile.role}</option>}
+              {assignableRoles.map((role) => <option key={role} value={role}>{role === "Gourou" ? "GOUROU" : role}</option>)}
             </select>
           </label>
-          <div className="dev-badge-assignments">
-            <span className="dev-badge-assignments-label">Badges</span>
-            <div className="dev-badge-assignment-list">
-              {[...profile.badges, ...badges.filter((badge) => !profile.badges.some((assignedBadge) => assignedBadge.id === badge.id))].map((badge) => {
-                const assignedIndex = profile.badges.findIndex((item) => item.id === badge.id);
-                const assigned = assignedIndex >= 0;
-                const busy = busyBadge === `${profile.id}:${badge.id}` || busyBadge === `order:${profile.id}`;
-                const style = { "--player-badge-color": badge.color } as CSSProperties;
-                return <span className={`badge-assignment-entry ${assigned ? "assigned" : ""}`} key={badge.id}>
-                  <button style={style} className={`badge-assignment-toggle ${assigned ? "active" : ""} ${badge.image_url ? "has-image" : ""}`} disabled={busy} onClick={() => void toggleBadge(profile, badge)} title={assigned ? `Retirer ${badge.name}` : `Attribuer ${badge.name}`}>
-                    {badge.image_url
-                      ? <span className="badge-assignment-image"><img src={badge.image_url} alt="" loading="lazy" /></span>
-                      : <span>{badge.icon}</span>}
-                    {badge.name}
-                  </button>
-                  {assigned && profile.badges.length > 1 && <span className="badge-order-controls" aria-label={`Ordre de ${badge.name}`}>
-                    <button type="button" disabled={busy || assignedIndex === 0} onClick={() => void moveAssignedBadge(profile, badge.id, -1)} title={`Déplacer ${badge.name} vers la gauche`}><ChevronLeft size={12}/></button>
-                    <button type="button" disabled={busy || assignedIndex === profile.badges.length - 1} onClick={() => void moveAssignedBadge(profile, badge.id, 1)} title={`Déplacer ${badge.name} vers la droite`}><ChevronRight size={12}/></button>
-                  </span>}
-                </span>;
-              })}
-              {badges.length === 0 && <span className="dev-badge-empty">Crée d'abord un badge.</span>}
+          <details className="dev-badge-dropdown">
+            <summary>
+              <span>Badges</span>
+              <strong>{profile.badges.length}/{badges.length}</strong>
+              <ChevronDown size={14}/>
+            </summary>
+            <div className="dev-badge-dropdown-panel">
+              <div className="dev-badge-dropdown-head">
+                <span>Badges de {profile.username}</span>
+                <small>Clique pour attribuer ou retirer · utilise les flèches pour l'ordre d'affichage.</small>
+              </div>
+              <div className="dev-badge-assignment-list">
+                {[...profile.badges, ...badges.filter((badge) => !profile.badges.some((assignedBadge) => assignedBadge.id === badge.id))].map((badge) => {
+                  const assignedIndex = profile.badges.findIndex((item) => item.id === badge.id);
+                  const assigned = assignedIndex >= 0;
+                  const busy = busyBadge === `${profile.id}:${badge.id}` || busyBadge === `order:${profile.id}`;
+                  const style = { "--player-badge-color": badge.color } as CSSProperties;
+                  return <span className={`badge-assignment-entry ${assigned ? "assigned" : ""}`} key={badge.id}>
+                    <button style={style} className={`badge-assignment-toggle ${assigned ? "active" : ""} ${badge.image_url ? "has-image" : ""}`} disabled={busy} onClick={() => void toggleBadge(profile, badge)} title={assigned ? `Retirer ${badge.name}` : `Attribuer ${badge.name}`}>
+                      {badge.image_url
+                        ? <span className="badge-assignment-image"><img src={badge.image_url} alt="" loading="lazy" /></span>
+                        : <span>{badge.icon}</span>}
+                      {badge.name}
+                    </button>
+                    {assigned && profile.badges.length > 1 && <span className="badge-order-controls" aria-label={`Ordre de ${badge.name}`}>
+                      <button type="button" disabled={busy || assignedIndex === 0} onClick={() => void moveAssignedBadge(profile, badge.id, -1)} title={`Déplacer ${badge.name} vers la gauche`}><ChevronLeft size={12}/></button>
+                      <button type="button" disabled={busy || assignedIndex === profile.badges.length - 1} onClick={() => void moveAssignedBadge(profile, badge.id, 1)} title={`Déplacer ${badge.name} vers la droite`}><ChevronRight size={12}/></button>
+                    </span>}
+                  </span>;
+                })}
+                {badges.length === 0 && <span className="dev-badge-empty">Crée d'abord un badge.</span>}
+              </div>
             </div>
-          </div>
+          </details>
         </div>;
       })}
     </div>}
-    <p className="dev-role-note">Par sécurité, ton propre rôle DEV n'est pas modifiable depuis ALYA Companion. Les badges, eux, peuvent être attribués à tous les profils, y compris le tien.</p>
+    <p className="dev-role-note">Hiérarchie : DEV &gt; GOUROU &gt; ADMIN &gt; user. Ton propre rôle n'est jamais modifiable ici. Un GOUROU peut gérer les badges et les comptes ADMIN/user, mais ne peut ni créer/promouvoir un DEV ou un GOUROU, ni modifier un compte DEV/GOUROU.</p>
   </section>;
 }
 
@@ -947,6 +1039,8 @@ function App() {
 
     let frame = 0;
     let disposed = false;
+    let embeddedSyncInFlight = false;
+    let embeddedSyncQueued = false;
     const host = embeddedHostRef.current;
     if (!host) return;
 
@@ -956,12 +1050,25 @@ function App() {
         if (disposed || !embeddedHostRef.current) return;
         const rect = embeddedHostRef.current.getBoundingClientRect();
         if (rect.width < 160 || rect.height < 160) return;
+        if (embeddedSyncInFlight) {
+          embeddedSyncQueued = true;
+          return;
+        }
+        embeddedSyncInFlight = true;
         void api.showEmbeddedWebview(kind, {
           x: rect.left,
           y: rect.top,
           width: rect.width,
           height: rect.height,
-        }).catch((error) => notify("error", `${kind} : ${String(error)}`));
+        })
+          .catch((error) => notify("error", `${kind} : ${String(error)}`))
+          .finally(() => {
+            embeddedSyncInFlight = false;
+            if (embeddedSyncQueued && !disposed) {
+              embeddedSyncQueued = false;
+              sync();
+            }
+          });
       });
     };
 
@@ -1233,8 +1340,8 @@ function App() {
 
   useEffect(() => {
     const role = auth.profile?.role;
-    if (tab === "prepa" && role !== "Admin" && role !== "DEV") setTab("dashboard");
-    if (tab === "user-admin" && role !== "DEV") setTab("dashboard");
+    if (tab === "prepa" && role !== "Admin" && role !== "Gourou" && role !== "DEV") setTab("dashboard");
+    if (tab === "user-admin" && role !== "Gourou" && role !== "DEV") setTab("dashboard");
   }, [tab, auth.profile?.role]);
 
   const theme = state?.theme_status;
@@ -1247,8 +1354,8 @@ function App() {
   );
   const appStyle = { "--accent": settings.accent_color || "#9b7bdf" } as CSSProperties;
   const alyaRole: AlyaRole = auth.profile?.role ?? "user";
-  const canAccessPrepa = alyaRole === "Admin" || alyaRole === "DEV";
-  const canManageRoles = alyaRole === "DEV";
+  const canAccessPrepa = alyaRole === "Admin" || alyaRole === "Gourou" || alyaRole === "DEV";
+  const canManageRoles = alyaRole === "Gourou" || alyaRole === "DEV";
   const activeBackgroundTab = isCustomizableBackgroundTab(tab) ? tab : null;
   const activeBackgroundAssetId = activeBackgroundTab
     ? pageBackgrounds[activeBackgroundTab] ?? DEFAULT_PAGE_BACKGROUNDS[activeBackgroundTab]
@@ -1281,6 +1388,7 @@ function App() {
 
   return (
     <div className={`app-shell ${sidebarCollapsed ? "sidebar-collapsed" : ""}`} style={appStyle}>
+      <BerriesTimerWatcher />
       <aside className="sidebar">
         <div className="sidebar-top">
           <div className="brand">
@@ -1289,20 +1397,12 @@ function App() {
           </div>
         </div>
         <div className="sidebar-scroll">
-          <nav>
-            {nav.map(([id, label, Icon]) => (
-              <button
-                key={id}
-                className={tab === id ? "nav-active" : ""}
-                onClick={() => setTab(id)}
-                title={sidebarCollapsed ? label : undefined}
-                aria-label={label}
-              >
-                <Icon size={18} />
-                <span className="nav-label">{label}</span>
-              </button>
-            ))}
-          </nav>
+          <SidebarGroupedNav
+            items={nav}
+            activeTab={tab}
+            collapsed={sidebarCollapsed}
+            onSelect={(id) => setTab(id as SidebarTab)}
+          />
         </div>
         <div className="sidebar-foot">
           {auth.profile && <button className="sidebar-profile" onClick={() => { auth.clearError(); setAccountOpen(true); }} title="Compte ALYA Companion">
@@ -1332,8 +1432,8 @@ function App() {
             {canManageRoles && <button
               className={`sidebar-dev-trigger ${tab === "user-admin" ? "active" : ""}`}
               onClick={() => { setCustomizeOpen(false); setTab("user-admin"); }}
-              title="Gestion utilisateurs DEV"
-              aria-label="Ouvrir la gestion utilisateurs DEV"
+              title="Gestion utilisateurs DEV / GOUROU"
+              aria-label="Ouvrir la gestion utilisateurs DEV / GOUROU"
             >
               <Shield size={18} />
             </button>}
@@ -1358,7 +1458,7 @@ function App() {
       </div>
 
       <main
-        className={`content ${tab === "dashboard" ? "dashboard-content" : ""} ${tab === "shinywar" ? "shinywar-content" : ""} ${tab === "surf" ? "surf-content" : ""} ${tab === "theme" ? "theme-content" : ""} ${tab === "rotations" ? "rotations-content" : ""} ${tab === "gymrerun" ? "gym-rerun-content" : ""} ${tab === "settings" ? "settings-content" : ""} ${tab === "prepa" || tab === "user-admin" ? "staff-content" : ""} ${EXTERNAL_TABS[tab] ? "external-content" : ""}`}
+        className={`content ${tab === "dashboard" ? "dashboard-content" : ""} ${tab === "shinywar" ? "shinywar-content" : ""} ${tab === "surf" ? "surf-content" : ""} ${tab === "theme" ? "theme-content" : ""} ${tab === "rotations" ? "rotations-content" : ""} ${tab === "gymrerun" ? "gym-rerun-content" : ""} ${tab === "raids" ? "raid-content" : ""} ${tab === "berries" ? "berries-content" : ""} ${tab === "mods" ? "mods-content" : ""} ${tab === "settings" ? "settings-content" : ""} ${tab === "prepa" || tab === "user-admin" ? "staff-content" : ""} ${EXTERNAL_TABS[tab] ? "external-content" : ""}`}
         style={contentBackgroundStyle}
       >
         {tab === "dashboard" && <video className="dashboard-media" src={dashboardBackground} autoPlay loop muted playsInline aria-hidden="true" />}
@@ -1416,8 +1516,9 @@ function App() {
                 </button>
               </div>
             )}
+            <DashboardEventWidget />
             <div className="hero-card">
-              <div><span className="kicker">ALYA Companion</span><h2>Un seul endroit pour tes outils PokeMMO.</h2><p>Thème AlyArchetype, Surf Manager, Vanity, Shiny-War, rotations légendaires, Shinyboard et forum dans une seule application.</p></div>
+              <div><span className="kicker">ALYA Companion</span><h2>Un seul endroit pour tes outils PokeMMO.</h2><p>Thème AlyArchetype, Surf Manager, Vanity, Shiny-War, rotations légendaires, Shinyboard, Poképédia, Pokébip et forum dans une seule application.</p></div>
               <div className="hero-orb"><img src={alyaIcon} alt="" /></div>
             </div>
             <div className="grid three dashboard-modules-grid">
@@ -1521,12 +1622,18 @@ function App() {
 
         {tab === "vanity" && <ExternalWebviewPage hostRef={embeddedHostRef} eyebrow="Cosmetics" title="Vanity Preview" description="Le Vanity Booth est chargé directement dans ALYA Companion." source="Crimson Core MMO — Vanity Booth" onEditBackground={() => openBackgroundPicker("vanity")} onReload={() => run("vanity-reload", () => api.reloadEmbeddedWebview("vanity"), undefined, false)} />}
         {tab === "shinyboard" && <ExternalWebviewPage hostRef={embeddedHostRef} eyebrow="Shiny hunting" title="Shinyboard" description="Dashboard Shinyboard intégré directement à ALYA Companion." source="shinyboard.net/dashboard" onEditBackground={() => openBackgroundPicker("shinyboard")} onReload={() => run("shinyboard-reload", () => api.reloadEmbeddedWebview("shinyboard"), undefined, false)} />}
+        {tab === "pokepedia" && <ExternalWebviewPage hostRef={embeddedHostRef} eyebrow="Encyclopédie Pokémon" title="Poképédia" description="L’encyclopédie Pokémon francophone directement dans ALYA Companion." source="pokepedia.fr" onEditBackground={() => openBackgroundPicker("pokepedia")} onReload={() => run("pokepedia-reload", () => api.reloadEmbeddedWebview("pokepedia"), undefined, false)} />}
+        {tab === "pokebip" && <ExternalWebviewPage hostRef={embeddedHostRef} eyebrow="Actualité & Pokédex" title="Pokébip" description="Actualités, Pokédex, dossiers et outils Pokébip directement dans ALYA Companion." source="pokebip.com" onEditBackground={() => openBackgroundPicker("pokebip")} onReload={() => run("pokebip-reload", () => api.reloadEmbeddedWebview("pokebip"), undefined, false)} />}
         {tab === "forum" && <ExternalWebviewPage hostRef={embeddedHostRef} eyebrow="Community" title="Forum PokeMMO" description="Le forum officiel PokeMMO intégré dans ALYA Companion." source="forums.pokemmo.com" onEditBackground={() => openBackgroundPicker("forum")} onReload={() => run("forum-reload", () => api.reloadEmbeddedWebview("forum"), undefined, false)} />}
         {tab === "shinywar" && <ShinyWarPage userId={auth.session.user.id} onEditBackground={() => openBackgroundPicker("shinywar")} />}
         {tab === "gymrerun" && <GymRerunPage onEditBackground={() => openBackgroundPicker("gymrerun")} onBackgroundVideoChange={setGymRerunBackgroundVideo} />}
+        {tab === "raids" && <RaidsPage onEditBackground={() => openBackgroundPicker("raids")} />}
+        {tab === "berries" && <BerriesPage onEditBackground={() => openBackgroundPicker("berries")} />}
+        {tab === "mods" && <ModsPage pokemmoDir={settings.pokemmo_dir} pokemmoRunning={Boolean(state?.pokemmo_running)} onEditBackground={() => openBackgroundPicker("mods")} />}
+        {tab === "stream" && <StreamPage onEditBackground={() => openBackgroundPicker("stream")} />}
         {tab === "rotations" && <RotationsPage onEditBackground={() => openBackgroundPicker("rotations")} />}
         {tab === "prepa" && canAccessPrepa && <PrepaAlyaPage />}
-        {tab === "user-admin" && canManageRoles && <DevUserAdminPage currentUserId={auth.session.user.id} />}
+        {tab === "user-admin" && canManageRoles && <DevUserAdminPage currentUserId={auth.session.user.id} currentUserRole={alyaRole} />}
 
         {tab === "settings" && (
           <section className="settings-page">
@@ -1603,60 +1710,7 @@ function App() {
         <div className="customizer-panel" role="dialog" aria-label="Personnaliser ALYA Companion">
           <div className="customizer-head"><div><span className="eyebrow">Interface</span><h2>Personnaliser</h2></div><button className="icon-button" onClick={() => setCustomizeOpen(false)} title="Fermer"><X size={17}/></button></div>
           <div className="customizer-section">
-            <h3>Onglets du volet</h3>
-            <div className="tab-order-list">
-              {tabOrder.map((id) => {
-                const item = NAV_ITEMS.find(([itemId]) => itemId === id);
-                if (!item) return null;
-                const [, label, Icon] = item;
-                const locked = id === "dashboard";
-                return (
-                  <div
-                    className={`tab-order-row ${draggedTab === id ? "dragging" : ""}`}
-                    key={id}
-                    data-tab-id={id}
-                  >
-                    <span
-                      className="drag-handle"
-                      role="button"
-                      tabIndex={0}
-                      title={`Maintiens et déplace ${label}`}
-                      aria-label={`Déplacer ${label}`}
-                      onPointerDown={(event) => beginTabPointerDrag(event, id)}
-                      onPointerMove={continueTabPointerDrag}
-                      onPointerUp={endTabPointerDrag}
-                      onPointerCancel={endTabPointerDrag}
-                    >
-                      <GripVertical size={16} aria-hidden="true" />
-                    </span>
-                    <Icon size={15} />
-                    <span className="tab-order-label">{label}</span>
-                    <div className="tab-order-actions" aria-label={`Position de ${label}`}>
-                      <button
-                        type="button"
-                        disabled={tabOrder.indexOf(id) === 0}
-                        onClick={() => void moveTabByOffset(id, -1)}
-                        title={`Monter ${label}`}
-                        aria-label={`Monter ${label}`}
-                      >
-                        <ChevronUp size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        disabled={tabOrder.indexOf(id) === tabOrder.length - 1}
-                        onClick={() => void moveTabByOffset(id, 1)}
-                        title={`Descendre ${label}`}
-                        aria-label={`Descendre ${label}`}
-                      >
-                        <ChevronDown size={14} />
-                      </button>
-                    </div>
-                    {locked ? <small>Toujours affiché</small> : <input type="checkbox" checked={!hiddenTabs.includes(id)} onChange={() => void toggleTabVisibility(id)} aria-label={`Afficher ${label}`} />}
-                  </div>
-                );
-              })}
-            </div>
-            <p className="customizer-hint">Maintiens la poignée ⋮⋮ et déplace la souris. Les flèches permettent aussi de monter ou descendre un onglet.</p>
+            <SidebarCategoryCustomizer />
           </div>
           <div className="customizer-section">
             <h3>Couleur d'accentuation</h3>

@@ -84,7 +84,7 @@ as $$
     select 1
     from public.profiles
     where id = auth.uid()
-      and role::text = 'DEV'
+      and role::text in ('DEV', 'Gourou')
   );
 $$;
 
@@ -111,7 +111,7 @@ declare
   clean_image_url text := nullif(trim(coalesce(p_image_url, '')), '');
 begin
   if not public.alya_current_user_is_dev() then
-    raise exception 'DEV role required' using errcode = '42501';
+    raise exception 'DEV or Gourou role required' using errcode = '42501';
   end if;
 
   if char_length(clean_name) < 1 or char_length(clean_name) > 24 then
@@ -147,7 +147,7 @@ set search_path = public
 as $$
 begin
   if not public.alya_current_user_is_dev() then
-    raise exception 'DEV role required' using errcode = '42501';
+    raise exception 'DEV or Gourou role required' using errcode = '42501';
   end if;
 
   delete from public.alya_badges where id = p_badge_id;
@@ -166,7 +166,7 @@ set search_path = public
 as $$
 begin
   if not public.alya_current_user_is_dev() then
-    raise exception 'DEV role required' using errcode = '42501';
+    raise exception 'DEV or Gourou role required' using errcode = '42501';
   end if;
 
   if not exists (select 1 from public.profiles where id = p_user_id) then
@@ -209,7 +209,7 @@ declare
   unique_count integer;
 begin
   if not public.alya_current_user_is_dev() then
-    raise exception 'DEV role required' using errcode = '42501';
+    raise exception 'DEV or Gourou role required' using errcode = '42501';
   end if;
 
   if not exists (select 1 from public.profiles where id = p_user_id) then

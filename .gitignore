@@ -11,3 +11,9 @@ src-tauri/binaries/*.exe
 .env
 
 
+
+# ALYA local patch / backup artifacts
+.alya-backup-*/
+.alya-release-backup-*/
+/Alya-RC*.zip
+/Alya-RC*/

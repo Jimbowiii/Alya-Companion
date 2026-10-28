@@ -7,7 +7,7 @@ import type {
   ThemeStatus,
 } from "./types";
 
-export type EmbeddedWebviewKind = "vanity" | "shinyboard" | "forum";
+export type EmbeddedWebviewKind = "vanity" | "shinyboard" | "pokepedia" | "pokebip" | "forum";
 
 export const api = {
   getState: () =>
