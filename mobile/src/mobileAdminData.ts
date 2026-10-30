@@ -118,7 +118,7 @@ export async function setBadgeAssignment(userId: string, badgeId: string, enable
   const badgeKey = firstKey(loaded.assignmentSample, ["badge_id", "player_badge_id"]) ?? "badge_id";
 
   if (enabled) {
-    const { error } = await sb.from(loaded.assignmentTable).upsert({ [userKey]: userId, [badgeKey]: badgeId });
+    const { error } = await sb.from(loaded.assignmentTable).upsert(({ [userKey]: userId, [badgeKey]: badgeId } as any));
     if (error) throw error;
   } else {
     const { error } = await sb.from(loaded.assignmentTable).delete().eq(userKey, userId).eq(badgeKey, badgeId);
