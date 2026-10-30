@@ -30,6 +30,8 @@ jobs:
           echo "Discord secrets presents."
 
       - name: Validate announcer syntax
+        env:
+          DISCORD_THREAD_ID: ${{ secrets.DISCORD_THREAD_ID }}
         run: node --check .github/scripts/announce-release.mjs
 
       - name: Announce RC12 on Discord
