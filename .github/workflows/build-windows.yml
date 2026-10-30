@@ -154,6 +154,32 @@ jobs:
             throw "Projet Android genere introuvable apres tauri android init."
           }
 
+      - name: Restore ALYA native Android plugins
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $sourceRoot = Join-Path $env:GITHUB_WORKSPACE "mobile\android-native"
+          $targetRoot = Join-Path $env:GITHUB_WORKSPACE "mobile\src-tauri\gen\android\app\src\main\java"
+          if (!(Test-Path $sourceRoot)) {
+            throw "mobile/android-native introuvable."
+          }
+          Get-ChildItem $sourceRoot -Filter *.kt -File -Recurse | ForEach-Object {
+            $relative = $_.FullName.Substring($sourceRoot.Length).TrimStart('\','/')
+            $destination = Join-Path $targetRoot $relative
+            New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
+            Copy-Item $_.FullName $destination -Force
+            Write-Host "[OK] Kotlin restored: $relative"
+          }
+          $plugin = Join-Path $targetRoot "com\alya\companion\mobile\ModFolderPlugin.kt"
+          if (!(Test-Path $plugin)) {
+            throw "ModFolderPlugin.kt absent apres restauration."
+          }
+
+
+      - name: Generate Android launcher icons
+        working-directory: mobile
+        run: npx tauri icon ./app-icon.png
+
       - name: Configure generated Android signing
         shell: pwsh
         run: node .github/scripts/patch-android-gradle-signing.mjs
