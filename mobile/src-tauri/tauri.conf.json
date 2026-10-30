@@ -1,0 +1,54 @@
+{
+    "$schema":  "https://schema.tauri.app/config/2",
+    "productName":  "ALYA Companion",
+    "version":  "1.0.0-rc.12",
+    "identifier":  "com.alya.companion.mobile",
+    "build":  {
+                  "beforeDevCommand":  "npm run dev:web",
+                  "devUrl":  "http://localhost:1421",
+                  "beforeBuildCommand":  "npm run build:web",
+                  "frontendDist":  "../dist"
+              },
+    "app":  {
+                "windows":  [
+                                {
+                                    "label":  "main",
+                                    "title":  "ALYA Companion",
+                                    "width":  430,
+                                    "height":  900,
+                                    "minWidth":  360,
+                                    "minHeight":  640,
+                                    "resizable":  true
+                                }
+                            ],
+                "security":  {
+                                 "csp":  "default-src \u0027self\u0027 ipc: http://ipc.localhost; img-src \u0027self\u0027 asset: http://asset.localhost https: data: blob:; media-src \u0027self\u0027 asset: http://asset.localhost https: blob:; connect-src \u0027self\u0027 ipc: http://ipc.localhost https://*.supabase.co wss://*.supabase.co https://raw.githubusercontent.com; style-src \u0027self\u0027 \u0027unsafe-inline\u0027; script-src \u0027self\u0027 \u0027unsafe-eval\u0027"
+                             }
+            },
+    "bundle":  {
+                   "active":  true,
+                   "targets":  "all",
+                   "icon":  [
+                                "icons/icon.png"
+                            ],
+                   "android":  {
+                                   "minSdkVersion":  24,
+                                   "versionCode":  12
+                               },
+                   "resources":  [
+                                     "resources/surf/*"
+                                 ]
+               },
+    "plugins":  {
+                    "deep-link":  {
+                                      "mobile":  [
+                                                     {
+                                                         "scheme":  [
+                                                                        "alya-companion"
+                                                                    ],
+                                                         "appLink":  false
+                                                     }
+                                                 ]
+                                  }
+                }
+}

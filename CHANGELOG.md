@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.0.0-rc.12] - 2026-10-30 — Shiny-Wars Update
+
+### Shiny-Wars
+- Ajout de la feuille **GTL** avec lignes dynamiques, prix unitaire, quantité, total par ligne et total général à récupérer.
+- Ajout de la feuille **Items** avec suivi des ressources, icônes dédiées et quantités synchronisées.
+- Détail des **9 fossiles** des cinq premières générations : Nautile, Dôme, Vieil Ambre, Racine, Griffe, Crâne, Armure, Plaque et Plume.
+- Ajout de la feuille **Alphas** avec sélection visuelle des Pokémon des générations 1 à 5, sprites, quantité et total.
+- Ajout de la feuille **Breeder** avec choix Alpha / Non Alpha, groupes d'œufs PokeMMO, quantité et total.
+- Ajout de la feuille **Synthèse** regroupant automatiquement Ditto, GTL, Items, Alphas et Breeder.
+- Ajout des totaux et détails utiles directement dans la Synthèse.
+- Amélioration de l'affichage et des icônes de la feuille Items.
+
+### Prépa Alya
+- Toutes les feuilles Shiny-Wars d'un joueur sont désormais consultables en **lecture seule** depuis Prépa Alya.
+- Ajout d'un champ de **réponse à la Synthèse** pour DEV / GOUROU / ADMIN.
+- La réponse du staff est synchronisée et visible par le joueur dans sa propre Synthèse.
+
+### Windows & Android
+- Synchronisation Alya Cloud des nouvelles feuilles entre PC et Android.
+- Adaptation responsive des feuilles Alphas et Breeder sur mobile.
+- Distribution Android ajoutée à la même release GitHub que la version Windows.
+- Version Android portée au `versionCode` **12** pour cette RC.
+
+### Corrections
+- Corrections d'affichage des items et fossiles.
+- Corrections de compatibilité WebView/mobile sur les nouvelles feuilles.
+- Préflight de publication rendu compatible avec Windows PowerShell et les accents UTF-8.
+
 ## [1.0.0-rc.11] - 2026-10-28
 
 RC11 agrandit fortement ALYA Companion avec de nouveaux modules de jeu, des outils communautaires, une meilleure organisation de la sidebar et plusieurs automatisations utiles au quotidien.

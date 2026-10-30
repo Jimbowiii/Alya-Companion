@@ -1,0 +1,63 @@
+.prepa-all{display:flex;flex-direction:column;gap:14px}
+.prepa-all-tabs{display:flex;gap:7px;align-items:center;flex-wrap:wrap;padding:8px;border:1px solid rgba(255,255,255,.08);border-radius:13px;background:rgba(8,10,17,.9)}
+.prepa-all-tabs button{min-height:36px;padding:0 11px;border-radius:9px;border:1px solid transparent;background:transparent;color:#9da2b1;font-weight:800}
+.prepa-all-tabs button.active{border-color:#e7c843;background:rgba(92,74,13,.55);color:#f1d450}
+.prepa-all-tabs>span{margin-left:auto;color:#79d79d;font-size:11px}
+.prepa-all-loading,.prepa-all-error,.prepa-all-empty{display:flex;align-items:center;justify-content:center;gap:9px;min-height:130px;border:1px dashed rgba(255,255,255,.12);border-radius:13px;color:#858b9b}
+.prepa-all-error{color:#ff818a}.prepa-all-spin{animation:synthesis-spin .9s linear infinite}
+.prepa-table-wrap{overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:12px}
+.prepa-readonly-table{width:100%;border-collapse:collapse;background:rgba(8,10,17,.9)}
+.prepa-readonly-table th,.prepa-readonly-table td{padding:10px;border-bottom:1px solid rgba(255,255,255,.065);text-align:left;color:#e7e8ed}
+.prepa-readonly-table th{color:#8f95a5;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+.prepa-readonly-table tr.total td{background:rgba(241,212,80,.06);color:#f1d450}
+.prepa-items-grid,.prepa-card-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.prepa-items-grid article,.prepa-pokemon-card{display:flex;align-items:center;gap:9px;padding:10px;border:1px solid rgba(255,255,255,.08);border-radius:11px;background:rgba(9,11,18,.9)}
+.prepa-items-grid img{width:40px;height:40px;object-fit:contain}.prepa-items-grid span{flex:1;color:#a9adba}.prepa-items-grid strong{color:#fff}.prepa-items-grid article.grand{grid-column:1/-1;justify-content:space-between;color:#f1d450}
+.prepa-pokemon-card>img{width:50px;height:50px;object-fit:contain;image-rendering:pixelated}.prepa-pokemon-card>div{flex:1;min-width:0}.prepa-pokemon-card strong,.prepa-pokemon-card small{display:block}.prepa-pokemon-card strong{color:#f3f3f6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.prepa-pokemon-card small{color:#858b9b}.prepa-pokemon-card>b{color:#f1d450}
+.prepa-alpha-dot{position:relative;width:42px;height:42px;display:grid;place-items:center;border-radius:50%;background:rgba(188,44,61,.16);color:#e76070;font-size:22px;font-weight:900}.prepa-alpha-dot.crossed:after{content:"";position:absolute;width:38px;height:4px;border-radius:5px;background:#ef3340;transform:rotate(-42deg)}
+.prepa-grid-total{grid-column:1/-1;display:flex;justify-content:space-between;padding:12px;border:1px solid rgba(241,212,80,.25);border-radius:11px;color:#f1d450;background:rgba(72,59,12,.3)}
+@media(max-width:760px){
+ .prepa-all-tabs{display:grid;grid-template-columns:repeat(3,1fr)}.prepa-all-tabs>span{grid-column:1/-1;margin:0;text-align:center}
+ .prepa-items-grid,.prepa-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .prepa-readonly-table{min-width:520px}
+}
+
+/* Fossil detail in Synthèse / Prépa */
+.synthesis-icon-row.fossil {
+  border-color: rgba(178,145,96,.22);
+  background: rgba(79,58,32,.18);
+}
+.synthesis-icon-row .synthesis-item-icons {
+  display:flex;
+  align-items:center;
+  gap:2px;
+}
+.synthesis-icon-row .synthesis-item-icons img {
+  width:34px;
+  height:34px;
+  object-fit:contain;
+}
+.synthesis-icon-row .synthesis-item-icons img.extra {
+  width:25px;
+  height:25px;
+}
+.prepa-item-icons {
+  display:flex;
+  align-items:center;
+  gap:2px;
+  flex:0 0 auto;
+}
+.prepa-item-icons img {
+  width:40px;
+  height:40px;
+  object-fit:contain;
+}
+.prepa-item-icons img.extra {
+  width:28px;
+  height:28px;
+}
+.prepa-items-grid article.fossil {
+  border-color: rgba(178,145,96,.22);
+  background: rgba(79,58,32,.18);
+}
+

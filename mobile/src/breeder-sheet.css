@@ -1,0 +1,157 @@
+.breeder-sheet { display:flex; flex-direction:column; gap:14px; }
+.breeder-toolbar { display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; }
+.breeder-stats { display:flex; gap:10px; flex-wrap:wrap; }
+.breeder-stats article { min-width:145px; padding:10px 13px; border:1px solid rgba(255,255,255,.1); border-radius:12px; background:rgba(10,12,20,.84); }
+.breeder-stats span { display:block; color:#9297a6; font-size:11px; text-transform:uppercase; letter-spacing:.08em; }
+.breeder-stats strong { display:block; color:#fff; font-size:20px; margin-top:3px; }
+.breeder-actions { display:flex; gap:8px; flex-wrap:wrap; }
+.breeder-actions button { min-height:40px; padding:0 13px; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:#11131d; color:#d8dae3; font-weight:700; cursor:pointer; }
+.breeder-actions button.primary { border-color:rgba(240,204,64,.55); background:rgba(77,63,15,.7); color:#f4d94c; }
+.breeder-actions button:disabled { opacity:.35; cursor:not-allowed; }
+
+.breeder-table th:first-child, .breeder-table td:first-child { width:230px; }
+.breeder-table th:nth-child(3), .breeder-table td:nth-child(3) { width:150px; }
+.breeder-table th:nth-child(4), .breeder-table td:nth-child(4) { width:130px; }
+.breeder-table td:first-child { position:relative; }
+.breeder-row-index { position:absolute; left:8px; top:8px; color:#73798a; font-size:10px; font-weight:800; letter-spacing:.08em; }
+
+.breeder-kind-picker { position:relative; width:100%; }
+.breeder-kind-trigger { width:100%; min-height:54px; display:flex; align-items:center; gap:10px; padding:6px 10px; border:1px solid rgba(255,255,255,.11); border-radius:10px; background:#0c0f17; color:#e8e9ee; text-align:left; cursor:pointer; }
+.breeder-kind-trigger > span:not(.breeder-alpha-mark) { flex:1; font-weight:700; }
+.breeder-kind-trigger b { color:#8d93a3; }
+.breeder-kind-menu { position:absolute; z-index:50; left:0; right:0; top:calc(100% + 5px); padding:6px; border:1px solid rgba(255,255,255,.12); border-radius:12px; background:#090b12; box-shadow:0 14px 45px rgba(0,0,0,.55); }
+.breeder-kind-menu button { width:100%; min-height:48px; display:flex; align-items:center; gap:10px; padding:5px 8px; border:1px solid transparent; border-radius:9px; background:transparent; color:#e8e9ee; cursor:pointer; }
+.breeder-kind-menu button.selected { border-color:rgba(240,204,64,.45); background:rgba(68,57,17,.5); color:#f4d94c; }
+
+.breeder-alpha-mark { position:relative; width:44px; height:44px; flex:0 0 44px; display:grid; place-items:center; }
+.breeder-alpha-mark.compact { width:38px; height:38px; flex-basis:38px; }
+.breeder-alpha-mark img { width:100%; height:100%; object-fit:contain; filter:drop-shadow(0 0 7px rgba(210,61,76,.25)); }
+.breeder-alpha-mark.crossed img { filter:grayscale(.18) brightness(.82); opacity:.9; }
+.breeder-alpha-slash { position:absolute; left:2px; right:2px; top:50%; height:4px; border-radius:999px; background:#ef3340; box-shadow:0 0 0 2px rgba(10,10,14,.9), 0 0 8px rgba(239,51,64,.55); transform:rotate(-43deg); transform-origin:center; }
+
+.breeder-egg-select { width:100%; min-height:54px; padding:0 38px 0 12px; border:1px solid rgba(255,255,255,.11); border-radius:10px; background:#0c0f17; color:#e8e9ee; font-weight:700; font-size:14px; outline:none; }
+.breeder-egg-select:focus { border-color:rgba(240,204,64,.6); }
+
+@media (max-width:760px) {
+  .breeder-toolbar { align-items:stretch; }
+  .breeder-stats { width:100%; display:grid; grid-template-columns:1fr 1fr; }
+  .breeder-stats article { min-width:0; }
+  .breeder-actions { width:100%; display:grid; grid-template-columns:1fr 1fr; }
+  .breeder-actions button { padding:0 8px; font-size:12px; }
+  .breeder-table th:first-child, .breeder-table td:first-child { width:180px; }
+  .breeder-table th:nth-child(2), .breeder-table td:nth-child(2) { min-width:150px; }
+  .breeder-table th:nth-child(3), .breeder-table td:nth-child(3) { width:88px; }
+  .breeder-table th:nth-child(4), .breeder-table td:nth-child(4) { width:78px; }
+  .breeder-row-index { display:none; }
+  .breeder-alpha-mark { width:38px; height:38px; flex-basis:38px; }
+  .breeder-kind-trigger { min-height:50px; padding:5px 8px; }
+  .breeder-egg-select { min-height:50px; font-size:13px; }
+}
+
+/* Mobile hotfix - ShinyWar Breeder */
+@media (max-width: 760px) {
+  .breeder-sheet {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .breeder-sheet .shiny-war-table-wrap {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+  }
+
+  .breeder-table {
+    width: 100%;
+    min-width: 0 !important;
+    table-layout: fixed;
+  }
+
+  .breeder-table th,
+  .breeder-table td {
+    min-width: 0 !important;
+    width: auto !important;
+    padding: 8px 6px;
+    vertical-align: middle;
+  }
+
+  .breeder-table th:nth-child(1),
+  .breeder-table td:nth-child(1) {
+    width: 118px !important;
+  }
+
+  .breeder-table th:nth-child(2),
+  .breeder-table td:nth-child(2) {
+    width: auto !important;
+  }
+
+  .breeder-table th:nth-child(3),
+  .breeder-table td:nth-child(3) {
+    width: 72px !important;
+  }
+
+  .breeder-table th:nth-child(4),
+  .breeder-table td:nth-child(4) {
+    width: 62px !important;
+  }
+
+  .breeder-kind-trigger {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 46px;
+    padding: 4px 6px;
+    gap: 6px;
+  }
+
+  .breeder-kind-trigger > span:not(.breeder-alpha-mark) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+  }
+
+  .breeder-alpha-mark {
+    width: 32px;
+    height: 32px;
+    flex-basis: 32px;
+  }
+
+  .breeder-egg-select {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    min-height: 46px;
+    padding: 0 24px 0 8px;
+    font-size: 13px;
+    box-sizing: border-box;
+  }
+
+  .breeder-table input[type="number"] {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 6px 4px;
+    font-size: 14px;
+  }
+
+  .breeder-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .breeder-actions button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .shiny-war-grand-total-row td {
+    white-space: normal;
+  }
+}
+

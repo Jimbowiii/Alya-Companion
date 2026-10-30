@@ -25,6 +25,7 @@ import {
   type BerryTimerMap,
   type BerryWateringMode,
 } from "./berryTimers";
+import { BERRY_NAMES_CHANGED_EVENT } from "./crossDeviceSync";
 
 type BerrySlot = {
   id: string;
@@ -129,6 +130,7 @@ export function BerriesPage({ onEditBackground }: Props) {
   useEffect(() => {
     try {
       localStorage.setItem(BERRY_NAMES_STORAGE_KEY, JSON.stringify(names));
+      window.dispatchEvent(new Event(BERRY_NAMES_CHANGED_EVENT));
     } catch {}
   }, [names]);
 
@@ -137,11 +139,14 @@ export function BerriesPage({ onEditBackground }: Props) {
       setTimers(readBerryTimers());
       setWateringModeState(readBerryWateringMode());
     };
+    const refreshNames = () => setNames(readNames());
     const interval = window.setInterval(() => setNow(Date.now()), 1000);
     window.addEventListener(BERRY_TIMER_EVENT, refresh);
+    window.addEventListener(BERRY_NAMES_CHANGED_EVENT, refreshNames);
     return () => {
       window.clearInterval(interval);
       window.removeEventListener(BERRY_TIMER_EVENT, refresh);
+      window.removeEventListener(BERRY_NAMES_CHANGED_EVENT, refreshNames);
     };
   }, []);
 
@@ -158,6 +163,7 @@ export function BerriesPage({ onEditBackground }: Props) {
   const resetNames = () => {
     setNames({});
     try { localStorage.removeItem(BERRY_NAMES_STORAGE_KEY); } catch {}
+    window.dispatchEvent(new Event(BERRY_NAMES_CHANGED_EVENT));
   };
 
   const changeWateringMode = (mode: BerryWateringMode) => {

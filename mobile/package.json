@@ -1,0 +1,35 @@
+{
+    "name":  "alya-companion-mobile",
+    "private":  true,
+    "version":  "1.0.0-rc.12",
+    "type":  "module",
+    "scripts":  {
+                    "sync":  "node scripts/sync-shared.mjs",
+                    "dev:web":  "npm run sync \u0026\u0026 vite --host 0.0.0.0 --port 1421",
+                    "build:web":  "npm run sync \u0026\u0026 tsc -b \u0026\u0026 vite build",
+                    "tauri":  "tauri",
+                    "android:init":  "npm run sync \u0026\u0026 tauri android init",
+                    "android:dev":  "npm run sync \u0026\u0026 tauri android dev",
+                    "android:build":  "npm run sync \u0026\u0026 tauri android build --apk"
+                },
+    "dependencies":  {
+                         "@supabase/supabase-js":  "^2.75.0",
+                         "@tauri-apps/api":  "^2.0.0",
+                         "@tauri-apps/plugin-deep-link":  "^2.0.0",
+                         "@tauri-apps/plugin-notification":  "^2.0.0",
+                         "@tauri-apps/plugin-opener":  "^2.0.0",
+                         "lucide-react":  "^0.468.0",
+                         "react":  "^19.1.1",
+                         "react-dom":  "^19.1.1",
+                         "@tauri-apps/plugin-dialog":  "^2.6.0",
+                         "@tauri-apps/plugin-fs":  "^2.7.0"
+                     },
+    "devDependencies":  {
+                            "@tauri-apps/cli":  "^2.0.0",
+                            "@types/react":  "^19.1.0",
+                            "@types/react-dom":  "^19.1.0",
+                            "@vitejs/plugin-react":  "^5.0.0",
+                            "typescript":  "^5.9.0",
+                            "vite":  "^7.3.0"
+                        }
+}

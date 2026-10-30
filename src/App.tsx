@@ -69,6 +69,7 @@ import { BerriesPage } from "./BerriesPage";
 import { BerriesTimerWatcher } from "./BerriesTimerWatcher";
 import { useAlyaAuth } from "./useAlyaAuth";
 import { cloudPreferencesFromSettings, createAlyaBadge, deleteAlyaBadge, listAlyaBadges, listAlyaProfiles, loadCloudShinyWar, saveCloudPreferences, saveCloudShinyWar, setAlyaUserBadge, setAlyaUserBadgeOrder, setAlyaUserRole, uploadAlyaBadgeImage } from "./auth";
+import { CrossDeviceSyncBridge, saveSurfActivePatch } from "./crossDeviceSync";
 import type { AlyaBadge, AlyaProfile, AlyaRole } from "./auth";
 import alyaIcon from "./assets/alya-icon.png";
 import dashboardBackground from "./assets/dashboard-background.webm";
@@ -91,6 +92,8 @@ import surfLatiasShiny from "./assets/surf-previews/latias-shiny.png";
 
 import SidebarGroupedNav from "./SidebarGroupedNav";
 import SidebarCategoryCustomizer from "./SidebarCategoryCustomizer";
+import { ShinyWarWorkbook } from "./ShinyWarWorkbook";
+import { ReadonlyShinyWarBundle } from "./ReadonlyShinyWarBundle";
 const EMPTY_SETTINGS: Settings = {
   pokemmo_dir: "",
   rom_path: "",
@@ -650,7 +653,7 @@ function ProfileAvatar({ profile }: { profile: AlyaProfile }) {
   return <span className="staff-user-avatar"><AvatarImage src={profile.avatar_url} updatedAt={profile.updated_at} fallbackSize={20} /></span>;
 }
 
-function PrepaAlyaPage() {
+function PrepaAlyaPage({ currentUserId }: { currentUserId: string }) {
   const [profiles, setProfiles] = useState<AlyaProfile[]>([]);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<AlyaProfile | null>(null);
@@ -672,7 +675,7 @@ function PrepaAlyaPage() {
     setSelected(profile); setSheet(null); setSheetLoading(true); setError(null);
     try {
       const cloud = await loadCloudShinyWar(profile.id);
-      setSheet(cloud ? normalizeShinyWarData(cloud) : null);
+      setSheet(cloud ? normalizeShinyWarData(cloud) : []);
     } catch (err) { setError(String(err)); }
     finally { setSheetLoading(false); }
   };
@@ -688,7 +691,7 @@ function PrepaAlyaPage() {
     </header>
     {error && <div className="auth-alert error"><span>{error.replace(/^Error:\s*/, "")}</span></div>}
     {sheetLoading ? <div className="staff-empty"><RefreshCw className="staff-spin" size={25}/><span>Chargement de la feuille…</span></div>
-      : sheet ? <ReadonlyShinyWarSheet accounts={sheet}/>
+      : sheet ? <ReadonlyShinyWarBundle targetUserId={selected.id} viewerUserId={currentUserId}/>
       : <div className="staff-empty"><Table2 size={30}/><strong>Aucune feuille Shiny-War cloud</strong><span>Cet utilisateur n'a pas encore synchronisé de feuille.</span></div>}
   </section>;
 
@@ -1388,6 +1391,7 @@ function App() {
 
   return (
     <div className={`app-shell ${sidebarCollapsed ? "sidebar-collapsed" : ""}`} style={appStyle}>
+      <CrossDeviceSyncBridge userId={auth.session.user.id} />
       <BerriesTimerWatcher />
       <aside className="sidebar">
         <div className="sidebar-top">
@@ -1607,6 +1611,7 @@ function App() {
                   <button className="primary" disabled={Boolean(busy) || Boolean(state?.pokemmo_running) || !settings.rom_path} onClick={() => run(`patch-${patch.id}`, async () => {
                     await persistSettings(settings);
                     await api.applySurfPatch(patch.id);
+                      await saveSurfActivePatch(patch.id);
                   }, `${patch.name} appliqué.`)}>{busy === `patch-${patch.id}` ? "Application…" : state?.surf_state.active_patch_id === patch.id ? "Réappliquer" : "Appliquer"}</button>
                 </article>
               ))}
@@ -1616,6 +1621,7 @@ function App() {
             <div className="action-row"><button className="danger-ghost" disabled={Boolean(busy) || Boolean(state?.pokemmo_running)} onClick={() => run("rom-restore", async () => {
               await persistSettings(settings);
               await api.restoreOriginalRom();
+                  await saveSurfActivePatch(null);
             }, "ROM originale restaurée.")}><RotateCcw size={17} /> Restaurer la ROM originale</button></div>
           </section>
         )}
@@ -1625,14 +1631,14 @@ function App() {
         {tab === "pokepedia" && <ExternalWebviewPage hostRef={embeddedHostRef} eyebrow="Encyclopédie Pokémon" title="Poképédia" description="L’encyclopédie Pokémon francophone directement dans ALYA Companion." source="pokepedia.fr" onEditBackground={() => openBackgroundPicker("pokepedia")} onReload={() => run("pokepedia-reload", () => api.reloadEmbeddedWebview("pokepedia"), undefined, false)} />}
         {tab === "pokebip" && <ExternalWebviewPage hostRef={embeddedHostRef} eyebrow="Actualité & Pokédex" title="Pokébip" description="Actualités, Pokédex, dossiers et outils Pokébip directement dans ALYA Companion." source="pokebip.com" onEditBackground={() => openBackgroundPicker("pokebip")} onReload={() => run("pokebip-reload", () => api.reloadEmbeddedWebview("pokebip"), undefined, false)} />}
         {tab === "forum" && <ExternalWebviewPage hostRef={embeddedHostRef} eyebrow="Community" title="Forum PokeMMO" description="Le forum officiel PokeMMO intégré dans ALYA Companion." source="forums.pokemmo.com" onEditBackground={() => openBackgroundPicker("forum")} onReload={() => run("forum-reload", () => api.reloadEmbeddedWebview("forum"), undefined, false)} />}
-        {tab === "shinywar" && <ShinyWarPage userId={auth.session.user.id} onEditBackground={() => openBackgroundPicker("shinywar")} />}
+        {tab === "shinywar" && <ShinyWarWorkbook userId={auth.session.user.id} onEditBackground={() => openBackgroundPicker("shinywar")} />}
         {tab === "gymrerun" && <GymRerunPage onEditBackground={() => openBackgroundPicker("gymrerun")} onBackgroundVideoChange={setGymRerunBackgroundVideo} />}
         {tab === "raids" && <RaidsPage onEditBackground={() => openBackgroundPicker("raids")} />}
         {tab === "berries" && <BerriesPage onEditBackground={() => openBackgroundPicker("berries")} />}
         {tab === "mods" && <ModsPage pokemmoDir={settings.pokemmo_dir} pokemmoRunning={Boolean(state?.pokemmo_running)} onEditBackground={() => openBackgroundPicker("mods")} />}
         {tab === "stream" && <StreamPage onEditBackground={() => openBackgroundPicker("stream")} />}
         {tab === "rotations" && <RotationsPage onEditBackground={() => openBackgroundPicker("rotations")} />}
-        {tab === "prepa" && canAccessPrepa && <PrepaAlyaPage />}
+        {tab === "prepa" && canAccessPrepa && <PrepaAlyaPage currentUserId={auth.session.user.id} />}
         {tab === "user-admin" && canManageRoles && <DevUserAdminPage currentUserId={auth.session.user.id} currentUserRole={alyaRole} />}
 
         {tab === "settings" && (

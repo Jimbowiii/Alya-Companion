@@ -1,34 +1,38 @@
 {
-  "name": "alya-companion",
-  "private": true,
-  "version": "1.0.0-rc.11",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview",
-    "pretauri": "npm run prepare:xdelta",
-    "tauri": "tauri",
-    "prepare:xdelta": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/prepare-xdelta.ps1"
-  },
-  "dependencies": {
-    "@supabase/supabase-js": "^2.118.0",
-    "@tauri-apps/api": "^2.12.3",
-    "@tauri-apps/plugin-deep-link": "^2.6.2",
-    "@tauri-apps/plugin-dialog": "2.8.3",
-    "@tauri-apps/plugin-notification": "^2.8.0",
-    "@tauri-apps/plugin-opener": "^2.7.2",
-    "@tauri-apps/plugin-updater": "^2.14.0",
-    "lucide-react": "^0.468.0",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1"
-  },
-  "devDependencies": {
-    "@tauri-apps/cli": "^2.12.2",
-    "@types/react": "^19.1.10",
-    "@types/react-dom": "^19.1.7",
-    "@vitejs/plugin-react": "^5.0.2",
-    "typescript": "~5.9.2",
-    "vite": "^7.1.3"
-  }
+    "name":  "alya-companion",
+    "private":  true,
+    "version":  "1.0.0-rc.12",
+    "type":  "module",
+    "scripts":  {
+                    "dev":  "vite",
+                    "build":  "tsc \u0026\u0026 vite build",
+                    "preview":  "vite preview",
+                    "pretauri":  "npm run prepare:xdelta",
+                    "tauri":  "tauri",
+                    "prepare:xdelta":  "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/prepare-xdelta.ps1",
+                    "mobile:install":  "npm --prefix mobile install",
+                    "mobile:init":  "npm --prefix mobile run android:init",
+                    "mobile:dev":  "npm --prefix mobile run android:dev",
+                    "mobile:build":  "npm --prefix mobile run android:build"
+                },
+    "dependencies":  {
+                         "@supabase/supabase-js":  "^2.118.0",
+                         "@tauri-apps/api":  "^2.12.3",
+                         "@tauri-apps/plugin-deep-link":  "^2.6.2",
+                         "@tauri-apps/plugin-dialog":  "2.8.3",
+                         "@tauri-apps/plugin-notification":  "^2.8.0",
+                         "@tauri-apps/plugin-opener":  "^2.7.2",
+                         "@tauri-apps/plugin-updater":  "^2.14.0",
+                         "lucide-react":  "^0.468.0",
+                         "react":  "^19.1.1",
+                         "react-dom":  "^19.1.1"
+                     },
+    "devDependencies":  {
+                            "@tauri-apps/cli":  "^2.12.2",
+                            "@types/react":  "^19.1.10",
+                            "@types/react-dom":  "^19.1.7",
+                            "@vitejs/plugin-react":  "^5.0.2",
+                            "typescript":  "~5.9.2",
+                            "vite":  "^7.1.3"
+                        }
 }

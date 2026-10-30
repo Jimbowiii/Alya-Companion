@@ -17,3 +17,26 @@ src-tauri/binaries/*.exe
 .alya-release-backup-*/
 /Alya-RC*.zip
 /Alya-RC*/
+/mobile/node_modules/
+/mobile/dist/
+/mobile/src/shared/
+/mobile/src-tauri/gen/
+/mobile/src-tauri/resources/surf/
+
+
+# ALYA local patch / release work
+.alya-backup-*/
+Alya-RC*/
+release/
+release-output/
+*.jks
+*.keystore
+**/keystore.properties
+
+# Build outputs
+src-tauri/target/
+mobile/src-tauri/target/
+mobile/src-tauri/gen/android/.gradle/
+mobile/src-tauri/gen/android/app/build/
+mobile/node_modules/
+node_modules/

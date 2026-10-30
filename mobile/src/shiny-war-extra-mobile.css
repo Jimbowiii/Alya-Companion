@@ -1,0 +1,100 @@
+﻿.shiny-mobile-v2{padding-bottom:28px}.shiny-mobile-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:5px;border:1px solid rgba(255,255,255,.1);background:rgba(10,11,17,.86);border-radius:14px}.shiny-mobile-tabs button{min-height:42px;border:0;border-radius:10px;background:transparent;color:#9297a6;display:flex;align-items:center;justify-content:center;gap:5px;font-weight:700}.shiny-mobile-tabs button.active{background:rgba(242,207,74,.15);color:#f4d75a;box-shadow:inset 0 0 0 1px rgba(242,207,74,.28)}.shiny-mobile-two{display:grid;grid-template-columns:1fr 1fr;gap:8px}.shiny-mobile-row-total,.shiny-mobile-grand{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 13px;border-radius:12px;background:#151720;border:1px solid rgba(255,255,255,.08)}.shiny-mobile-row-total span,.shiny-mobile-grand span{font-size:10px;color:#9095a4;text-transform:uppercase;letter-spacing:.08em}.shiny-mobile-row-total strong{font-size:17px}.shiny-mobile-grand{border-color:rgba(242,207,74,.35);background:rgba(47,41,16,.82)}.shiny-mobile-grand strong{color:#f3d75c;font-size:20px}.shiny-mobile-empty{padding:30px 14px;text-align:center;border:1px dashed #3a3d49;border-radius:14px;color:#838897;background:rgba(10,11,16,.72)}.shiny-items-mobile-list{display:grid;grid-template-columns:1fr 1fr;gap:9px}.shiny-item-mobile{display:flex;flex-direction:column;gap:7px}.shiny-item-mobile-icon{height:62px;display:grid;place-items:center;border-radius:12px;background:#0b0c11;border:1px solid #282b35}.shiny-item-mobile-icon img{width:46px;height:46px;object-fit:contain}.shiny-item-mobile .mobile-field{margin:0}.shiny-item-mobile-total{display:flex;justify-content:space-between;align-items:center;font-size:10px;color:#8f94a2}.shiny-item-mobile-total strong{font-size:14px;color:#fff}.shiny-mobile-cloud-note{display:flex;align-items:center;justify-content:flex-end;gap:6px;font-size:10px;color:#8f95a5;padding:4px 2px}.shiny-mobile-cloud-note.synced{color:#8fe0ae}.shiny-mobile-cloud-note.error{color:#e3a0a0}@media(max-width:370px){.shiny-items-mobile-list{grid-template-columns:1fr}.shiny-mobile-tabs button{font-size:11px}.shiny-mobile-two{grid-template-columns:1fr}}
+
+/* Shiny-War item icon fallback v1.0.3 */
+.shiny-item-mobile-icon .shiny-item-icon-fallback {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.05);
+  color: rgba(255,255,255,.55);
+  font-weight: 800;
+  font-size: 18px;
+}
+
+/* Shiny-War Items v1.4.0 */
+.shiny-item-icon-cell {
+  min-width: 155px;
+}
+.shiny-item-icon-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.shiny-item-icon-stack {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  flex: 0 0 auto;
+}
+.shiny-item-icon-stack > img,
+.shiny-item-icon-stack > .shiny-item-icon-fallback {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+}
+.shiny-item-icon-stack > .shiny-item-extra-icon {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+.shiny-item-label {
+  color: #d9dbe3;
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.2;
+}
+.shiny-item-fossil-row .shiny-item-label {
+  color: #d8c6a9;
+}
+.shiny-item-mobile-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 9px;
+}
+.shiny-item-mobile-heading .shiny-item-icon-stack > img,
+.shiny-item-mobile-heading .shiny-item-icon-stack > .shiny-item-icon-fallback {
+  width: 42px;
+  height: 42px;
+}
+.shiny-item-mobile-heading .shiny-item-extra-icon {
+  width: 28px !important;
+  height: 28px !important;
+}
+.shiny-item-mobile-heading strong {
+  color: #f1f1f4;
+  font-size: 14px;
+}
+.shiny-item-mobile.fossil {
+  border-color: rgba(178, 145, 96, .22);
+}
+@media (max-width:760px) {
+  .shiny-item-icon-cell { min-width: 0; }
+  .shiny-item-label { font-size: 12px; }
+}
+
+
+/* Shiny-War Items v1.4.2 fossil icons align */
+.shiny-item-icon-content.no-label {
+  justify-content: center;
+  width: 100%;
+  gap: 0;
+}
+.shiny-item-icon-content.no-label .shiny-item-icon-stack {
+  margin-inline: auto;
+}
+.shiny-item-mobile-heading.no-label {
+  justify-content: center;
+  gap: 0;
+}
+.shiny-item-mobile-heading.no-label .shiny-item-mobile-icon {
+  margin-inline: auto;
+}
+.shiny-item-mobile-heading.no-label strong {
+  display: none;
+}
+
