@@ -19,6 +19,21 @@ jobs:
         with:
           node-version: "24"
 
+      - name: Validate release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          RELEASE_TAG: v1.0.0-rc.12
+        run: |
+          set -euo pipefail
+          echo "Repository: $GITHUB_REPOSITORY"
+          echo "Release tag: $RELEASE_TAG"
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
+            --jq '.tag_name'
+
       - name: Announce RC12 on Discord
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
@@ -26,6 +41,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_API_URL: https://api.github.com
-          GITHUB_REF_NAME: v1.0.0-rc.12
+          GITHUB_REF_NAME: main
           RELEASE_TAG: v1.0.0-rc.12
         run: node .github/scripts/announce-release.mjs

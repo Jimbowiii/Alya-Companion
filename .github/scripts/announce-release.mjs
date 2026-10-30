@@ -1,7 +1,9 @@
 import fs from "node:fs";
 
 const repo = process.env.GITHUB_REPOSITORY;
-const tag = process.env.GITHUB_REF_NAME;
+const tag = String(process.env.RELEASE_TAG || process.env.GITHUB_REF_NAME || "").trim();
+console.log("[ALYA] Release tag:", tag);
+if (!tag) throw new Error("Release tag manquant.");
 const token = process.env.GITHUB_TOKEN;
 const webhook = process.env.DISCORD_WEBHOOK_URL;
 
