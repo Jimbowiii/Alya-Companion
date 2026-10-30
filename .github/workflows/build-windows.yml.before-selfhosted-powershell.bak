@@ -1,0 +1,295 @@
+﻿name: Build & Release Windows
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: [self-hosted, Windows, X64]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Read changelog
+        id: changelog
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $version = $env:RELEASE_TAG -replace '^v', ''
+          $body = $null
+
+          if (Test-Path "CHANGELOG.md") {
+            $content = Get-Content "CHANGELOG.md" -Raw -Encoding utf8
+            $lines = $content -split "`r?`n"
+            $escapedVersion = [regex]::Escape($version)
+            $headingPattern = "^\s*##\s+\[?$escapedVersion\]?(?:\s*-\s*.*)?\s*$"
+
+            $start = -1
+            for ($i = 0; $i -lt $lines.Count; $i++) {
+              if ($lines[$i] -match $headingPattern) {
+                $start = $i
+                break
+              }
+            }
+
+            if ($start -ge 0) {
+              $end = $lines.Count
+              for ($i = $start + 1; $i -lt $lines.Count; $i++) {
+                if ($lines[$i] -match '^\s*##\s+') {
+                  $end = $i
+                  break
+                }
+              }
+
+              if ($end -gt ($start + 1)) {
+                $body = ($lines[($start + 1)..($end - 1)] -join "`n").Trim()
+              }
+            }
+          }
+
+          # Secours : la release ne doit plus echouer uniquement parce que la section
+          # du CHANGELOG est absente. Les notes versionnees sont utilisees a la place.
+          if ([string]::IsNullOrWhiteSpace($body)) {
+            $releaseNotesPath = "RELEASE-NOTES-$version.md"
+            if (Test-Path $releaseNotesPath) {
+              Write-Warning "CHANGELOG section $version missing; using $releaseNotesPath instead."
+              $body = (Get-Content $releaseNotesPath -Raw -Encoding utf8).Trim()
+            }
+          }
+
+          if ([string]::IsNullOrWhiteSpace($body)) {
+            Write-Host "Available changelog headings:"
+            if (Test-Path "CHANGELOG.md") {
+              Get-Content "CHANGELOG.md" -Encoding utf8 |
+                Where-Object { $_ -match '^\s*##\s+' } |
+                ForEach-Object { Write-Host "  $_" }
+            }
+            throw "No release notes found for version $version."
+          }
+
+          Write-Host "Release notes found for $version"
+          Write-Host $body
+
+          $delimiter = "CHANGELOG_$([guid]::NewGuid().ToString('N'))"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "body<<$delimiter" -Encoding utf8
+          Add-Content -Path $env:GITHUB_OUTPUT -Value $body -Encoding utf8
+          Add-Content -Path $env:GITHUB_OUTPUT -Value $delimiter -Encoding utf8
+
+      - name: Build and publish ALYA Companion
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "ALYA Companion ${{ github.ref_name }}"
+          releaseBody: ${{ steps.changelog.outputs.body }}
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          uploadUpdaterJson: true
+          uploadUpdaterSignatures: true
+          updaterJsonPreferNsis: true
+          releaseAssetNamePattern: "Alya-Companion-Windows-x64[setup][ext]"
+
+      - name: Setup Java for Android
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: ''
+
+      - name: Install Android SDK packages and NDK
+        shell: cmd
+        run: |
+          sdkmanager.bat --install "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;27.0.12077973"
+          if errorlevel 1 exit /b 1
+          echo ANDROID_NDK_HOME=%ANDROID_HOME%\ndk\27.0.12077973>>%GITHUB_ENV%
+          echo NDK_HOME=%ANDROID_HOME%\ndk\27.0.12077973>>%GITHUB_ENV%
+
+      - name: Add Android Rust targets
+        shell: pwsh
+        run: rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
+
+      - name: Initialize generated Android project
+        shell: pwsh
+        working-directory: mobile
+        run: |
+          $ErrorActionPreference = "Stop"
+          if (!(Test-Path "node_modules")) {
+            npm ci
+            if ($LASTEXITCODE -ne 0) { throw "npm ci mobile echoue." }
+          }
+          if (!(Test-Path "src-tauri\gen\android\app\build.gradle.kts")) {
+            npx tauri android init
+            if ($LASTEXITCODE -ne 0) { throw "tauri android init echoue." }
+          }
+          if (!(Test-Path "src-tauri\gen\android\app\build.gradle.kts")) {
+            throw "Projet Android genere introuvable apres tauri android init."
+          }
+
+      - name: Restore ALYA native Android plugins
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $sourceRoot = Join-Path $env:GITHUB_WORKSPACE "mobile\android-native"
+          $targetRoot = Join-Path $env:GITHUB_WORKSPACE "mobile\src-tauri\gen\android\app\src\main\java"
+          if (!(Test-Path $sourceRoot)) {
+            throw "mobile/android-native introuvable."
+          }
+          Get-ChildItem $sourceRoot -Filter *.kt -File -Recurse | ForEach-Object {
+            $relative = $_.FullName.Substring($sourceRoot.Length).TrimStart('\','/')
+            $destination = Join-Path $targetRoot $relative
+            New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
+            Copy-Item $_.FullName $destination -Force
+            Write-Host "[OK] Kotlin restored: $relative"
+          }
+          $plugin = Join-Path $targetRoot "com\alya\companion\mobile\ModFolderPlugin.kt"
+          if (!(Test-Path $plugin)) {
+            throw "ModFolderPlugin.kt absent apres restauration."
+          }
+
+
+      - name: Generate Android launcher icons
+        working-directory: mobile
+        run: npx tauri icon ./app-icon.png
+
+      - name: Configure generated Android signing
+        shell: pwsh
+        run: node .github/scripts/patch-android-gradle-signing.mjs
+
+
+      - name: Setup Android signing
+        shell: pwsh
+        env:
+          ANDROID_KEY_BASE64: ${{ secrets.ANDROID_KEY_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          if (-not $env:ANDROID_KEY_BASE64 -or -not $env:ANDROID_KEY_ALIAS -or -not $env:ANDROID_KEY_PASSWORD) {
+            throw "Secrets Android manquants: ANDROID_KEY_BASE64, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD"
+          }
+          $androidDir = Join-Path $env:GITHUB_WORKSPACE "mobile\src-tauri\gen\android"
+          New-Item -ItemType Directory -Force -Path $androidDir | Out-Null
+          $keyFile = Join-Path $env:RUNNER_TEMP "alya-release.jks"
+          [IO.File]::WriteAllBytes($keyFile, [Convert]::FromBase64String($env:ANDROID_KEY_BASE64))
+          $propertiesPath = Join-Path $androidDir "keystore.properties"
+          $storePath = $keyFile.Replace('\','\\')
+          $properties = @(
+            "keyAlias=$env:ANDROID_KEY_ALIAS"
+            "password=$env:ANDROID_KEY_PASSWORD"
+            "storeFile=$storePath"
+          )
+          [IO.File]::WriteAllLines($propertiesPath, $properties, (New-Object System.Text.UTF8Encoding($false)))
+          Write-Host "Android signing properties ready."
+
+      - name: Build Android APK
+        shell: pwsh
+        working-directory: mobile
+        run: |
+          $ErrorActionPreference = "Stop"
+          npm ci
+          $pkg = Get-Content package.json -Raw | ConvertFrom-Json
+          if ($pkg.scripts.sync) { npm run sync }
+          npx tauri android build --apk --ci
+          if ($LASTEXITCODE -ne 0) { throw "Build Android Tauri echoue." }
+
+      - name: Collect Android APK
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $apkRoot = Join-Path $env:GITHUB_WORKSPACE "mobile\src-tauri\gen\android\app\build\outputs\apk"
+          $apk = Get-ChildItem $apkRoot -Filter *.apk -File -Recurse |
+            Where-Object { $_.Name -notmatch "unsigned|unaligned|debug" } |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+          if (!$apk) {
+            Get-ChildItem $apkRoot -Filter *.apk -File -Recurse | ForEach-Object { Write-Host $_.FullName }
+            throw "APK release signe introuvable."
+          }
+          Copy-Item $apk.FullName (Join-Path $env:GITHUB_WORKSPACE "ALYA-Companion-Android.apk") -Force
+          Write-Host "APK: $($apk.FullName)"
+
+      - name: Upload Android APK to GitHub Release
+        uses: softprops/action-gh-release@v3
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: ALYA-Companion-Android.apk
+          draft: false
+          prerelease: false
+
+
+      - name: Copy updater metadata
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          New-Item -ItemType Directory -Force updater-meta | Out-Null
+
+          Write-Host "Downloading latest.json from release $env:RELEASE_TAG"
+          gh release download $env:RELEASE_TAG `
+            --pattern "latest.json" `
+            --dir updater-meta `
+            --clobber
+
+          if (-not (Test-Path "updater-meta/latest.json")) {
+            throw "latest.json was not generated by tauri-action."
+          }
+
+          gh release view updater-metadata *> $null
+          $metadataReleaseExists = $LASTEXITCODE -eq 0
+
+          if (-not $metadataReleaseExists) {
+            Write-Host "Creating updater-metadata release"
+            gh release create updater-metadata `
+              --title "ALYA Companion Updater Metadata" `
+              --notes "Metadata utilisÃ© par le systÃ¨me de mise Ã  jour intÃ©grÃ© d'ALYA Companion." `
+              --prerelease
+          }
+
+          Write-Host "Uploading latest.json to updater-metadata"
+
+          gh release upload updater-metadata `
+            "updater-meta/latest.json" `
+            --clobber
+
+      - name: Announce release on Discord
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          DISCORD_THREAD_ID: ${{ secrets.DISCORD_THREAD_ID }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: node .github/scripts/announce-release.mjs

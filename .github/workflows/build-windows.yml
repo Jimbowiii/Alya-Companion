@@ -211,6 +211,9 @@ jobs:
           Write-Host "Android signing properties ready."
 
       - name: Build Android APK
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         shell: powershell
         working-directory: mobile
         run: |
