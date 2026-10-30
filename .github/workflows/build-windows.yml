@@ -1,4 +1,4 @@
-﻿name: Build & Release Windows
+name: Build & Release Windows
 
 on:
   push:
@@ -30,7 +30,7 @@ jobs:
 
       - name: Read changelog
         id: changelog
-        shell: pwsh
+        shell: powershell
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
@@ -134,11 +134,11 @@ jobs:
           echo NDK_HOME=%ANDROID_HOME%\ndk\27.0.12077973>>%GITHUB_ENV%
 
       - name: Add Android Rust targets
-        shell: pwsh
+        shell: powershell
         run: rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
 
       - name: Initialize generated Android project
-        shell: pwsh
+        shell: powershell
         working-directory: mobile
         run: |
           $ErrorActionPreference = "Stop"
@@ -155,7 +155,7 @@ jobs:
           }
 
       - name: Restore ALYA native Android plugins
-        shell: pwsh
+        shell: powershell
         run: |
           $ErrorActionPreference = "Stop"
           $sourceRoot = Join-Path $env:GITHUB_WORKSPACE "mobile\android-native"
@@ -181,12 +181,12 @@ jobs:
         run: npx tauri icon ./app-icon.png
 
       - name: Configure generated Android signing
-        shell: pwsh
+        shell: powershell
         run: node .github/scripts/patch-android-gradle-signing.mjs
 
 
       - name: Setup Android signing
-        shell: pwsh
+        shell: powershell
         env:
           ANDROID_KEY_BASE64: ${{ secrets.ANDROID_KEY_BASE64 }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -211,7 +211,7 @@ jobs:
           Write-Host "Android signing properties ready."
 
       - name: Build Android APK
-        shell: pwsh
+        shell: powershell
         working-directory: mobile
         run: |
           $ErrorActionPreference = "Stop"
@@ -222,7 +222,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Build Android Tauri echoue." }
 
       - name: Collect Android APK
-        shell: pwsh
+        shell: powershell
         run: |
           $ErrorActionPreference = "Stop"
           $apkRoot = Join-Path $env:GITHUB_WORKSPACE "mobile\src-tauri\gen\android\app\build\outputs\apk"
@@ -247,7 +247,7 @@ jobs:
 
 
       - name: Copy updater metadata
-        shell: pwsh
+        shell: powershell
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ github.ref_name }}
@@ -285,7 +285,7 @@ jobs:
 
       - name: Announce release on Discord
         if: startsWith(github.ref, 'refs/tags/')
-        shell: pwsh
+        shell: powershell
         env:
           DISCORD_THREAD_ID: ${{ secrets.DISCORD_THREAD_ID }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
