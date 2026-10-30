@@ -1,4 +1,4 @@
-name: Build & Release Windows
+﻿name: Build & Release Windows
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build-windows:
-    runs-on: windows-latest
+    runs-on: [self-hosted, Windows, X64]
 
     steps:
       - name: Checkout repository
@@ -273,7 +273,7 @@ jobs:
             Write-Host "Creating updater-metadata release"
             gh release create updater-metadata `
               --title "ALYA Companion Updater Metadata" `
-              --notes "Metadata utilisé par le système de mise à jour intégré d'ALYA Companion." `
+              --notes "Metadata utilisÃ© par le systÃ¨me de mise Ã  jour intÃ©grÃ© d'ALYA Companion." `
               --prerelease
           }
 
