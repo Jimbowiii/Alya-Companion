@@ -114,6 +114,114 @@ jobs:
           updaterJsonPreferNsis: true
           releaseAssetNamePattern: "Alya-Companion-Windows-x64[setup][ext]"
 
+      - name: Setup Java for Android
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install Android SDK / NDK
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $sdkRoot = $env:ANDROID_HOME
+          if (-not $sdkRoot) { $sdkRoot = $env:ANDROID_SDK_ROOT }
+          if (-not $sdkRoot) { throw "ANDROID_HOME / ANDROID_SDK_ROOT absent sur le runner." }
+          $sdkManager = Join-Path $sdkRoot "cmdline-tools\latest\bin\sdkmanager.bat"
+          if (!(Test-Path $sdkManager) {
+            $candidate = Get-ChildItem (Join-Path $sdkRoot "cmdline-tools") -Filter sdkmanager.bat -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+            if (!$candidate) { throw "sdkmanager.bat introuvable." }
+            $sdkManager = $candidate.FullName
+          }
+          & $sdkManager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;29.0.13846066"
+          if ($LASTEXITCODE -ne 0) { throw "Installation Android SDK/NDK echouee." }
+          "ANDROID_HOME=$sdkRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "ANDROID_SDK_ROOT=$sdkRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "NDK_HOME=$sdkRoot\ndk\29.0.13846066" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Add Android Rust targets
+        shell: pwsh
+        run: rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
+
+      - name: Initialize generated Android project
+        shell: pwsh
+        working-directory: mobile
+        run: |
+          $ErrorActionPreference = "Stop"
+          if (!(Test-Path "node_modules")) {
+            npm ci
+            if ($LASTEXITCODE -ne 0) { throw "npm ci mobile echoue." }
+          }
+          if (!(Test-Path "src-tauri\gen\android\app\build.gradle.kts")) {
+            npx tauri android init
+            if ($LASTEXITCODE -ne 0) { throw "tauri android init echoue." }
+          }
+          if (!(Test-Path "src-tauri\gen\android\app\build.gradle.kts")) {
+            throw "Projet Android genere introuvable apres tauri android init."
+          }
+
+      - name: Configure generated Android signing
+        shell: pwsh
+        run: node .github/scripts/patch-android-gradle-signing.mjs
+
+
+      - name: Setup Android signing
+        shell: pwsh
+        env:
+          ANDROID_KEY_BASE64: ${{ secrets.ANDROID_KEY_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          if (-not $env:ANDROID_KEY_BASE64 -or -not $env:ANDROID_KEY_ALIAS -or -not $env:ANDROID_KEY_PASSWORD) {
+            throw "Secrets Android manquants: ANDROID_KEY_BASE64, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD"
+          }
+          $androidDir = Join-Path $env:GITHUB_WORKSPACE "mobile\src-tauri\gen\android"
+          New-Item -ItemType Directory -Force -Path $androidDir | Out-Null
+          $keyFile = Join-Path $env:RUNNER_TEMP "alya-release.jks"
+          [IO.File]::WriteAllBytes($keyFile, [Convert]::FromBase64String($env:ANDROID_KEY_BASE64))
+          @"
+      keyAlias=$env:ANDROID_KEY_ALIAS
+      password=$env:ANDROID_KEY_PASSWORD
+      storeFile=$($keyFile.Replace("\","\\"))
+      "@ | Set-Content -Path (Join-Path $androidDir "keystore.properties") -Encoding utf8
+
+      - name: Build Android APK
+        shell: pwsh
+        working-directory: mobile
+        run: |
+          $ErrorActionPreference = "Stop"
+          npm ci
+          $pkg = Get-Content package.json -Raw | ConvertFrom-Json
+          if ($pkg.scripts.sync) { npm run sync }
+          npx tauri android build --apk --ci
+          if ($LASTEXITCODE -ne 0) { throw "Build Android Tauri echoue." }
+
+      - name: Collect Android APK
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $apkRoot = Join-Path $env:GITHUB_WORKSPACE "mobile\src-tauri\gen\android\app\build\outputs\apk"
+          $apk = Get-ChildItem $apkRoot -Filter *.apk -File -Recurse |
+            Where-Object { $_.Name -notmatch "unsigned|unaligned|debug" } |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+          if (!$apk) {
+            Get-ChildItem $apkRoot -Filter *.apk -File -Recurse | ForEach-Object { Write-Host $_.FullName }
+            throw "APK release signe introuvable."
+          }
+          Copy-Item $apk.FullName (Join-Path $env:GITHUB_WORKSPACE "ALYA-Companion-Android.apk") -Force
+          Write-Host "APK: $($apk.FullName)"
+
+      - name: Upload Android APK to GitHub Release
+        uses: softprops/action-gh-release@v3
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: ALYA-Companion-Android.apk
+          draft: false
+          prerelease: false
+
+
       - name: Copy updater metadata
         shell: pwsh
         env:
@@ -152,85 +260,11 @@ jobs:
             --clobber
 
       - name: Announce release on Discord
-        if: success()
+        if: startsWith(github.ref, 'refs/tags/')
         shell: pwsh
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          DISCORD_THREAD_ID: ${{ secrets.DISCORD_THREAD_ID }}
-          RELEASE_TAG: ${{ github.ref_name }}
-          REPOSITORY: ${{ github.repository }}
-          SERVER_URL: ${{ github.server_url }}
-          CHANGELOG_BODY: ${{ steps.changelog.outputs.body }}
-        run: |
-          $ErrorActionPreference = "Stop"
-
-          if ([string]::IsNullOrWhiteSpace($env:DISCORD_WEBHOOK_URL)) {
-            throw "DISCORD_WEBHOOK_URL is missing."
-          }
-
-          if ([string]::IsNullOrWhiteSpace($env:DISCORD_THREAD_ID)) {
-            throw "DISCORD_THREAD_ID is missing."
-          }
-
-          $separator = if ($env:DISCORD_WEBHOOK_URL.Contains("?")) {
-            "&"
-          } else {
-            "?"
-          }
-
-          $webhookUrl = "$env:DISCORD_WEBHOOK_URL${separator}thread_id=$env:DISCORD_THREAD_ID"
-          $releaseUrl = "$env:SERVER_URL/$env:REPOSITORY/releases/tag/$env:RELEASE_TAG"
-          $downloadUrl = "$env:SERVER_URL/$env:REPOSITORY/releases/download/$env:RELEASE_TAG/Alya-Companion-Windows-x64-setup.exe"
-
-          $changelog = $env:CHANGELOG_BODY
-
-          if ([string]::IsNullOrWhiteSpace($changelog)) {
-            $changelog = "Aucun détail fourni pour cette version."
-          }
-
-          $maxChangelogLength = 1600
-          if ($changelog.Length -gt $maxChangelogLength) {
-            $changelog = $changelog.Substring(0, $maxChangelogLength)
-            $changelog += "`n`n… **Changelog tronqué sur Discord.** Consulte la GitHub Release pour lire la suite."
-          }
-
-          $description = @"
-          **$env:RELEASE_TAG** est maintenant disponible ! 🌺
-
-          ### 📋 Changelog
-
-          $changelog
-          "@
-
-          $payload = @{
-            username = "ALYA Companion"
-            embeds = @(
-              @{
-                title = "🌺 Nouvelle version d'ALYA Companion disponible !"
-                description = $description
-                fields = @(
-                  @{
-                    name = "📥 Téléchargement"
-                    value = "[Télécharger ALYA Companion]($downloadUrl)"
-                    inline = $true
-                  },
-                  @{
-                    name = "🔗 GitHub Release"
-                    value = "[Voir la release complète]($releaseUrl)"
-                    inline = $true
-                  }
-                )
-                footer = @{
-                  text = "ALYA Companion • PokeMMO Companion"
-                }
-              }
-            )
-          }
-
-          $json = $payload | ConvertTo-Json -Depth 10
-
-          Invoke-RestMethod `
-            -Uri $webhookUrl `
-            -Method Post `
-            -ContentType "application/json; charset=utf-8" `
-            -Body ([System.Text.Encoding]::UTF8.GetBytes($json))
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: node .github/scripts/announce-release.mjs
