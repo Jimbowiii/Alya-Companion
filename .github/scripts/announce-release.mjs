@@ -93,7 +93,16 @@ const payload = {
   }],
 };
 
-const res = await fetch(webhook, {
+const discordThreadId = String(process.env.DISCORD_THREAD_ID || "").trim();
+if (!discordThreadId) {
+  throw new Error("Secret DISCORD_THREAD_ID manquant.");
+}
+
+const discordWebhookUrl = new URL(webhook);
+discordWebhookUrl.searchParams.set("thread_id", discordThreadId);
+console.log("[ALYA] Discord thread_id:", discordThreadId);
+
+const res = await fetch(discordWebhookUrl.toString(), {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify(payload),
