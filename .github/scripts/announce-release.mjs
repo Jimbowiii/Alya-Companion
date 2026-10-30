@@ -19,7 +19,15 @@ const api = `https://api.github.com/repos/${repo}/releases/tags/${encodeURICompo
 
 let release;
 for (let attempt = 0; attempt < 12; attempt++) {
-  const response = await fetch(api, { headers });
+  const response = const discordThreadId = process.env.DISCORD_THREAD_ID;
+if (!discordThreadId) {
+  throw new Error("Secret DISCORD_THREAD_ID manquant.");
+}
+
+const discordWebhookUrl = new URL(api);
+discordWebhookUrl.searchParams.set("thread_id", discordThreadId);
+
+await fetch(discordWebhookUrl.toString(), { headers });
   if (!response.ok) throw new Error(`GitHub release API ${response.status}: ${await response.text()}`);
   release = await response.json();
 
