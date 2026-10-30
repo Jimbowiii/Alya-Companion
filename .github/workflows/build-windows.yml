@@ -1,4 +1,4 @@
-name: Build & Release Windows
+﻿name: Build & Release Windows
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build-windows:
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: windows-latest
 
     steps:
       - name: Checkout repository
@@ -276,7 +276,7 @@ jobs:
             Write-Host "Creating updater-metadata release"
             gh release create updater-metadata `
               --title "ALYA Companion Updater Metadata" `
-              --notes "Metadata utilisÃ© par le systÃ¨me de mise Ã  jour intÃ©grÃ© d'ALYA Companion." `
+              --notes "Metadata utilisÃƒÂ© par le systÃƒÂ¨me de mise ÃƒÂ  jour intÃƒÂ©grÃƒÂ© d'ALYA Companion." `
               --prerelease
           }
 
@@ -296,3 +296,4 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
         run: node .github/scripts/announce-release.mjs
+
