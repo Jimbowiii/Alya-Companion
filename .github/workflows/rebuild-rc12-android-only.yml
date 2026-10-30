@@ -1,0 +1,168 @@
+name: Rebuild RC12 Android Only
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            mobile/package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: ''
+
+      - name: Install Android SDK packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0" \
+            "ndk;27.0.12077973"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> "$GITHUB_ENV"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci
+          npm --prefix mobile ci
+
+      - name: Sync mobile shared sources
+        shell: bash
+        working-directory: mobile
+        run: npm run sync
+
+      - name: Initialize generated Android project
+        shell: bash
+        working-directory: mobile
+        run: |
+          set -euo pipefail
+          if [ ! -f "src-tauri/gen/android/app/build.gradle.kts" ]; then
+            npx tauri android init --ci
+          fi
+          test -f "src-tauri/gen/android/app/build.gradle.kts"
+
+      - name: Restore ALYA native Android plugins
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE="$GITHUB_WORKSPACE/mobile/android-native"
+          TARGET="$GITHUB_WORKSPACE/mobile/src-tauri/gen/android/app/src/main/java"
+          test -d "$SOURCE"
+          find "$SOURCE" -type f -name '*.kt' -print0 | while IFS= read -r -d '' f; do
+            rel="${f#"$SOURCE"/}"
+            dst="$TARGET/$rel"
+            mkdir -p "$(dirname "$dst")"
+            cp "$f" "$dst"
+            echo "[OK] Kotlin restored: $rel"
+          done
+          test -f "$TARGET/com/alya/companion/mobile/ModFolderPlugin.kt"
+
+      - name: Generate Android launcher icons
+        shell: bash
+        working-directory: mobile
+        run: |
+          set -euo pipefail
+          test -f app-icon.png
+          npx tauri icon ./app-icon.png
+
+      - name: Configure generated Android signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f .github/scripts/patch-android-gradle-signing.mjs
+          node .github/scripts/patch-android-gradle-signing.mjs
+
+      - name: Setup Android signing
+        shell: bash
+        env:
+          ANDROID_KEY_BASE64: ${{ secrets.ANDROID_KEY_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$ANDROID_KEY_BASE64"
+          test -n "$ANDROID_KEY_ALIAS"
+          test -n "$ANDROID_KEY_PASSWORD"
+
+          ANDROID_DIR="$GITHUB_WORKSPACE/mobile/src-tauri/gen/android"
+          KEY_FILE="$RUNNER_TEMP/alya-release.jks"
+
+          printf '%s' "$ANDROID_KEY_BASE64" | base64 --decode > "$KEY_FILE"
+
+          cat > "$ANDROID_DIR/keystore.properties" <<EOF
+          keyAlias=$ANDROID_KEY_ALIAS
+          password=$ANDROID_KEY_PASSWORD
+          storeFile=$KEY_FILE
+          EOF
+
+          test -s "$KEY_FILE"
+          test -f "$ANDROID_DIR/keystore.properties"
+
+      - name: Build Android APK
+        shell: bash
+        working-directory: mobile
+        env:
+          CI: "true"
+        run: |
+          set -euo pipefail
+          npx tauri android build --apk --ci --target aarch64
+
+      - name: Collect Android APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-output/rc12
+          APK="$(find mobile/src-tauri/gen/android -type f -name '*.apk' | sort | tail -n 1)"
+          test -n "$APK"
+          echo "Found APK: $APK"
+          cp "$APK" release-output/rc12/ALYA-Companion-Android.apk
+          ls -lh release-output/rc12/ALYA-Companion-Android.apk
+
+      - name: Replace APK in existing RC12 GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: v1.0.0-rc.12
+          files: release-output/rc12/ALYA-Companion-Android.apk
+          overwrite_files: true
+          fail_on_unmatched_files: true
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ALYA-Companion-Android-RC12
+          path: release-output/rc12/ALYA-Companion-Android.apk
+          if-no-files-found: error
